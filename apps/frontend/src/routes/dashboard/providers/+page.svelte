@@ -48,9 +48,6 @@ async function handleQuery() {
 }
 
 onMount(async () => {
-    if (!auth.isAuthenticated) {
-        window.location.href = "/login";
-    }
     await loadHealth();
 });
 </script>
@@ -61,7 +58,7 @@ onMount(async () => {
 	<div class="mb-12 border-b border-cream-200 pb-6 flex justify-between items-end">
 		<div>
 			<span class="text-xs font-bold tracking-widest uppercase text-ink-400 mb-2 block">
-				Base de datos 03
+				Base de datos
 			</span>
 			<h1 class="text-4xl font-serif text-ink-900">Historial crediticio</h1>
 		</div>

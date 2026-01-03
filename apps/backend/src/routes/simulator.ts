@@ -7,6 +7,42 @@ import type { Conversation } from "@totem/types";
 
 const simulator = new Hono();
 
+// List all test conversations
+simulator.get("/conversations", (c) => {
+    const conversations = db
+        .prepare(
+            `SELECT * FROM conversations 
+             WHERE is_simulation = 1 
+             ORDER BY last_activity_at DESC`
+        )
+        .all() as Conversation[];
+
+    return c.json(conversations);
+});
+
+// Create new test conversation
+simulator.post("/conversations", async (c) => {
+    const { phoneNumber } = await c.req.json();
+
+    if (!phoneNumber) {
+        return c.json({ error: "phoneNumber required" }, 400);
+    }
+
+    // Check if already exists
+    const existing = db
+        .prepare("SELECT * FROM conversations WHERE phone_number = ?")
+        .get(phoneNumber) as Conversation | undefined;
+
+    if (existing) {
+        return c.json({ error: "Conversation already exists" }, 400);
+    }
+
+    // Create new test conversation
+    const conv = getOrCreateConversation(phoneNumber, true);
+
+    return c.json(conv);
+});
+
 // Send message in simulator
 simulator.post("/message", async (c) => {
     const { phoneNumber, message } = await c.req.json();
@@ -50,6 +86,32 @@ simulator.post("/reset/:phone", (c) => {
     WhatsAppService.clearMessageHistory(phoneNumber);
 
     return c.json({ status: "reset" });
+});
+
+// Delete simulator conversation
+simulator.delete("/conversations/:phone", (c) => {
+    const phoneNumber = c.req.param("phone");
+
+    // Verify it's a simulation conversation before deleting
+    const conv = db
+        .prepare("SELECT is_simulation FROM conversations WHERE phone_number = ?")
+        .get(phoneNumber) as { is_simulation: number } | undefined;
+
+    if (!conv) {
+        return c.json({ error: "Conversation not found" }, 404);
+    }
+
+    if (conv.is_simulation !== 1) {
+        return c.json({ error: "Can only delete simulation conversations" }, 403);
+    }
+
+    // Delete conversation from database
+    db.prepare("DELETE FROM conversations WHERE phone_number = ?").run(phoneNumber);
+
+    // Clear message history
+    WhatsAppService.clearMessageHistory(phoneNumber);
+
+    return c.json({ status: "deleted" });
 });
 
 // Load conversation into simulator (for replay/debugging)

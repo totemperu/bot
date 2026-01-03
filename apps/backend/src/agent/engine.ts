@@ -17,6 +17,7 @@ import { notifyTeam } from "../services/notifier.ts";
 import { CatalogService } from "../services/catalog.ts";
 import * as LLM from "../services/llm.ts";
 import * as T from "@totem/core";
+import { selectVariant, selectVariantWithContext, formatFirstName } from "@totem/core";
 
 export async function processMessage(
     phoneNumber: string,
@@ -47,7 +48,7 @@ async function executeTransition(
     // 1. Detect questions at any state (except INIT)
     if (state !== "INIT" && state !== "WAITING_PROVIDER") {
         const intent = await LLM.classifyIntent(message);
-        
+
         if (intent === "question") {
             // Generate LLM answer for the question
             const questionResponse = await LLM.answerQuestion(message, {
@@ -66,7 +67,7 @@ async function executeTransition(
     if (state === "OFFER_PRODUCTS" && !context.offeredCategory) {
         // Get available categories from database for this segment
         const availableCategories = CatalogService.getAvailableCategories(context.segment);
-        
+
         const category = await LLM.extractEntity(message, "product_category", {
             availableCategories,
         });
@@ -91,34 +92,45 @@ async function executeTransition(
 
     // Execute commands
     for (const command of output.commands) {
-        await executeCommand(conv.phone_number, command, context);
+        await executeCommand(conv, command, context);
     }
 }
 
 async function executeCommand(
-    phoneNumber: string,
+    conv: Conversation,
     command: Command,
     context: StateContext,
 ): Promise<void> {
+    const phoneNumber = conv.phone_number;
+    const isSimulation = conv.is_simulation === 1;
+
     switch (command.type) {
         case "CHECK_FNB":
-            await handleCheckFNB(phoneNumber, command.dni, context);
+            await handleCheckFNB(conv, command.dni, context);
             break;
 
         case "CHECK_GASO":
-            await handleCheckGaso(phoneNumber, command.dni, context);
+            await handleCheckGaso(conv, command.dni, context);
             break;
 
         case "SEND_MESSAGE":
-            await WhatsAppService.sendMessage(phoneNumber, command.content);
+            if (isSimulation) {
+                // In simulator mode, just log locally without calling WhatsApp API
+                WhatsAppService.logMessage(phoneNumber, "outbound", "text", command.content, "sent");
+            } else {
+                await WhatsAppService.sendMessage(phoneNumber, command.content);
+            }
             break;
 
         case "SEND_IMAGES":
-            await handleSendImages(phoneNumber, command.category, context);
+            await handleSendImages(conv, command.category, context);
             break;
 
         case "NOTIFY_TEAM":
-            await notifyTeam(command.channel, command.message);
+            // Skip team notifications in simulator mode
+            if (!isSimulation) {
+                await notifyTeam(command.channel, command.message);
+            }
             break;
 
         case "TRACK_EVENT":
@@ -132,24 +144,37 @@ async function executeCommand(
 }
 
 async function handleCheckFNB(
-    phoneNumber: string,
+    conv: Conversation,
     dni: string,
     context: StateContext,
 ): Promise<void> {
+    const phoneNumber = conv.phone_number;
+    const isSimulation = conv.is_simulation === 1;
     const result = await FNBProvider.checkCredit(dni);
 
     if (result.eligible && checkFNBEligibility(result.credit)) {
-        // FNB eligible - update and transition
+        // FNB eligible - select variant for message
+        const firstName = formatFirstName(result.name);
+        const fnbVariants = T.FNB_APPROVED(firstName, result.credit);
+        const { message: approvedMsg, updatedContext: variantCtx } = selectVariant(
+            fnbVariants,
+            "FNB_APPROVED",
+            context,
+        );
+
+        // Update state with variant tracking
         updateConversationState(phoneNumber, "OFFER_PRODUCTS", {
             segment: "fnb",
             clientName: result.name,
             creditLine: result.credit,
+            ...variantCtx,
         });
 
-        await WhatsAppService.sendMessage(
-            phoneNumber,
-            T.FNB_APPROVED(result.name || "Cliente", result.credit),
-        );
+        if (isSimulation) {
+            WhatsAppService.logMessage(phoneNumber, "outbound", "text", approvedMsg, "sent");
+        } else {
+            await WhatsAppService.sendMessage(phoneNumber, approvedMsg);
+        }
 
         trackEvent(phoneNumber, "eligibility_passed", {
             segment: "fnb",
@@ -157,21 +182,79 @@ async function handleCheckFNB(
         });
     } else {
         // Try Gaso as fallback
-        await handleCheckGaso(phoneNumber, dni, context);
+        await handleCheckGaso(conv, dni, context);
     }
 }
 
 async function handleCheckGaso(
-    phoneNumber: string,
+    conv: Conversation,
     dni: string,
-    _context: StateContext,
+    context: StateContext,
 ): Promise<void> {
+    const phoneNumber = conv.phone_number;
+    const isSimulation = conv.is_simulation === 1;
     const result = await GasoProvider.checkEligibility(dni);
 
+    // Check if PowerBI is down and we used fallback (notify dev team once)
+    if (!isSimulation && (result.reason?.startsWith("powerbi_down") || result.reason === "powerbi_failed_used_fallback")) {
+        await notifyTeam(
+            "dev",
+            `[ALERT] PowerBI is DOWN - Using Calidda fallback\n` +
+            `Reason: ${result.reason}\n` +
+            `DNI: ${dni}\n` +
+            `Eligible: ${result.eligible}\n` +
+            `Credit: S/ ${result.credit}\n` +
+            `Phone: ${phoneNumber}`,
+        );
+    }
+
     if (!result.eligible) {
+        // Check if it's an API error (provider unavailable)
+        if (result.reason === "api_error" || result.reason === "provider_unavailable" || result.reason === "all_providers_down") {
+            // Notify team about provider issues (skip in simulation)
+            if (!isSimulation) {
+                await notifyTeam(
+                    "dev",
+                    `[ALERT] GASO Provider unavailable\nDNI: ${dni}\nReason: ${result.reason}\nPhone: ${phoneNumber}`,
+                );
+            }
+
+            // Escalate to human since we can't verify eligibility
+            const { message: handoffMsg, updatedContext: variantCtx } = T.selectVariantWithContext(
+                T.HANDOFF_TO_HUMAN,
+                "HANDOFF_TO_HUMAN",
+                context,
+            );
+            updateConversationState(phoneNumber, "ESCALATED", variantCtx);
+
+            if (isSimulation) {
+                WhatsAppService.logMessage(phoneNumber, "outbound", "text", handoffMsg, "sent");
+            } else {
+                await WhatsAppService.sendMessage(phoneNumber, handoffMsg);
+            }
+
+            escalateConversation(phoneNumber, "gaso_provider_unavailable");
+            trackEvent(phoneNumber, "provider_error", {
+                provider: "gaso",
+                reason: result.reason,
+            });
+            return;
+        }
+
         // Not eligible in either system
-        updateConversationState(phoneNumber, "CLOSING", {});
-        await WhatsAppService.sendMessage(phoneNumber, T.NOT_ELIGIBLE);
+        const { message: notEligibleMsg, updatedContext: variantCtx } = selectVariant(
+            T.NOT_ELIGIBLE,
+            "NOT_ELIGIBLE",
+            context,
+        );
+        updateConversationState(phoneNumber, "CLOSING", variantCtx);
+
+        if (isSimulation) {
+            WhatsAppService.logMessage(phoneNumber, "outbound", "text", notEligibleMsg, "sent");
+        } else {
+            await WhatsAppService.sendMessage(phoneNumber, notEligibleMsg);
+        }
+
         trackEvent(phoneNumber, "eligibility_failed", {
             reason: result.reason || "not_found",
         });
@@ -179,24 +262,36 @@ async function handleCheckGaso(
     }
 
     // Check Gaso eligibility matrix (need age first)
+    const firstName = formatFirstName(result.name);
+    const ageVariants = T.ASK_AGE(firstName);
+    const { message: ageMsg, updatedContext: variantCtx } = selectVariant(
+        ageVariants,
+        "ASK_AGE",
+        context,
+    );
+
     updateConversationState(phoneNumber, "COLLECT_AGE", {
         segment: "gaso",
         clientName: result.name,
         creditLine: result.credit,
         nse: result.nse,
+        ...variantCtx,
     });
 
-    await WhatsAppService.sendMessage(
-        phoneNumber,
-        T.ASK_AGE(result.name || "Cliente"),
-    );
+    if (isSimulation) {
+        WhatsAppService.logMessage(phoneNumber, "outbound", "text", ageMsg, "sent");
+    } else {
+        await WhatsAppService.sendMessage(phoneNumber, ageMsg);
+    }
 }
 
 async function handleSendImages(
-    phoneNumber: string,
+    conv: Conversation,
     category: string,
     context: StateContext,
 ): Promise<void> {
+    const phoneNumber = conv.phone_number;
+    const isSimulation = conv.is_simulation === 1;
     const segment = context.segment || "fnb";
     const creditLine = context.creditLine || 0;
 
@@ -212,17 +307,28 @@ async function handleSendImages(
     products = products.slice(0, 3);
 
     if (products.length === 0) {
-        await WhatsAppService.sendMessage(phoneNumber, T.NO_STOCK);
+        const { message: noStockMsg, updatedContext: variantCtx } = selectVariant(
+            T.NO_STOCK,
+            "NO_STOCK",
+            context,
+        );
+        updateConversationState(phoneNumber, conv.current_state, variantCtx);
+
+        if (isSimulation) {
+            WhatsAppService.logMessage(phoneNumber, "outbound", "text", noStockMsg, "sent");
+        } else {
+            await WhatsAppService.sendMessage(phoneNumber, noStockMsg);
+        }
         return;
     }
 
     for (const product of products) {
         const caption = `${product.name}\nPrecio: S/ ${product.price.toFixed(2)}${product.installments ? `\nCuotas: ${product.installments} meses` : ""}`;
 
-        await WhatsAppService.sendImage(
-            phoneNumber,
-            product.image_main_path,
-            caption,
-        );
+        if (isSimulation) {
+            WhatsAppService.logMessage(phoneNumber, "outbound", "image", caption, "sent");
+        } else {
+            await WhatsAppService.sendImage(phoneNumber, product.image_main_path, caption);
+        }
     }
 }
