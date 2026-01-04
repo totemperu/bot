@@ -106,11 +106,18 @@ LOAD_FUNCTIONS:
 - Load chaining: +page.server.js data available as data prop in +page.js load
   function
 - Example: +page.server.js
+
+  ```ts
   export async function load({ cookies, locals }) {
-  const user = await db.getUser(locals.userId); return { user }; } +page.js
-  export async function load({ data, fetch }) { const posts = await
-  fetch("/api/posts").then((r) => r.json()); return { user: data.user, posts };
+    const user = await db.getUser(locals.userId);
+    return { user };
   }
+  +page.js;
+  export async function load({ data, fetch }) {
+    const posts = await fetch("/api/posts").then((r) => r.json());
+    return { user: data.user, posts };
+  }
+  ```
 
 FORM_ACTIONS:
 

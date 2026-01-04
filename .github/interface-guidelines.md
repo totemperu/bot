@@ -3,7 +3,8 @@ MUST/SHOULD/NEVER to guide decisions.
 
 INTERACTIONS_KEYBOARD:
 
-- MUST: Full keyboard support per WAI-ARIA APG (https://www.w3.org/WAI/ARIA/apg/patterns/)
+- MUST: Full keyboard support per WAI-ARIA APG
+  (https://www.w3.org/WAI/ARIA/apg/patterns/)
 - MUST: Visible focus rings (:focus-visible group with :focus-within)
 - MUST: Manage focus (trap, move, and return) per APG patterns
 

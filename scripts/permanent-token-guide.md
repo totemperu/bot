@@ -1,13 +1,17 @@
 # Getting a Permanent WhatsApp Access Token
 
-Your current token expires quickly. Here's how to create a permanent system user token.
+Your current token expires quickly. Here's how to create a permanent system user
+token.
 
 ## Step-by-Step Guide
 
 ### 1. Go to Business Settings
-Navigate to: **[Meta Business Settings](https://business.facebook.com/settings)**
+
+Navigate to:
+**[Meta Business Settings](https://business.facebook.com/settings)**
 
 ### 2. Create a System User
+
 1. Click **"System users"** in the left sidebar (under Users section)
 2. Click the **"Add"** button (top right)
 3. Fill in details:
@@ -16,6 +20,7 @@ Navigate to: **[Meta Business Settings](https://business.facebook.com/settings)*
 4. Click **"Create system user"**
 
 ### 3. Assign Assets to System User
+
 1. Select your newly created system user
 2. Click **"Assign assets"** button
 3. In the **Apps** tab:
@@ -27,6 +32,7 @@ Navigate to: **[Meta Business Settings](https://business.facebook.com/settings)*
 5. Click **"Assign assets"**
 
 ### 4. Generate the Permanent Token
+
 1. Still on the system user page, click **"Generate token"** button
 2. Select your app from the dropdown
 3. **Add these permissions** (check each one):
@@ -52,6 +58,7 @@ WHATSAPP_TOKEN=<YOUR_PERMANENT_TOKEN_HERE>
 ### 6. Test the New Token
 
 Run the test script:
+
 ```bash
 # Test sending a message with the new token
 curl 'https://graph.facebook.com/v23.0/951170611408466/messages' \
@@ -72,16 +79,19 @@ Or restart your backend and send a WhatsApp message to test.
 ## Important Notes
 
 ### Token Security
+
 - ⚠️ **Never commit tokens to git**
 - ⚠️ **Keep .env in .gitignore**
 - ⚠️ **Store in secure secret management for production**
 
 ### Token Expiration Options
+
 - **Never**: Token never expires (best for bots)
 - **60 days**: More secure, requires rotation every 2 months
 - **Custom**: Set your own expiration
 
 ### If You Lose the Token
+
 1. Go back to system user
 2. Click "Generate new token"
 3. Follow same steps
@@ -97,6 +107,7 @@ curl -X GET "https://graph.facebook.com/v23.0/debug_token?input_token=<YOUR_TOKE
 ```
 
 Should return:
+
 ```json
 {
   "data": {
@@ -108,7 +119,7 @@ Should return:
       "whatsapp_business_messaging",
       "whatsapp_business_management"
     ],
-    "expires_at": 0  // 0 means never expires
+    "expires_at": 0 // 0 means never expires
   }
 }
 ```
@@ -116,6 +127,7 @@ Should return:
 ## Production Checklist
 
 Before going live:
+
 - [ ] Created system user with proper name
 - [ ] Assigned all necessary assets
 - [ ] Generated token with correct permissions
@@ -129,20 +141,24 @@ Before going live:
 ## Troubleshooting
 
 ### "Invalid OAuth access token"
+
 - Token expired or incorrectly copied
 - Regenerate and update .env
 
 ### "Permission denied"
+
 - System user doesn't have correct asset assignments
 - Check both app AND WhatsApp account are assigned
 
 ### "Token not found"
+
 - System user was deleted
 - Recreate system user and token
 
 ## Next Steps
 
 Once you have your permanent token:
+
 1. ✅ Update `.env` file
 2. ✅ Restart backend: `bun run dev:backend`
 3. ✅ Test by sending WhatsApp message
