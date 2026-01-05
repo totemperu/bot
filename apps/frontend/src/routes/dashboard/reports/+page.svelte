@@ -336,7 +336,7 @@ async function generateOrderReport() {
         </h3>
         <select
           bind:value={orderStatus}
-          class="px-4 py-2 border border-ink-200 text-sm focus:outline-none focus:border-ink-900 min-w-[200px]"
+          class="px-4 py-2 border border-ink-200 text-sm focus:outline-none focus:border-ink-900 min-w-50"
         >
           <option value="">Todos los estados</option>
           <option value="pending">Pendiente</option>

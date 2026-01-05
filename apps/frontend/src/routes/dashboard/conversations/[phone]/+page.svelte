@@ -284,13 +284,10 @@ function goBack() {
     {/if}
 
     <!-- Header -->
-    <div class="bg-white border-b border-ink-900/10 sticky top-[65px] z-10">
+    <div class="bg-white border-b border-ink-900/10 sticky top-16.25 z-10">
       <div class="max-w-7xl mx-auto px-8 py-6">
         <div class="flex justify-between items-start mb-6">
           <div>
-            <button onclick={goBack} class="text-xs text-ink-400 hover:text-ink-600 mb-2 flex items-center gap-1">
-              <span>&larr;</span> Volver a conversaciones
-            </button>
             <h1 class="font-serif text-3xl text-ink-900">
               {#if conversation.client_name}
                 {conversation.client_name}
