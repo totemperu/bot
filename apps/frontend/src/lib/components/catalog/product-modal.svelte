@@ -205,7 +205,7 @@ async function handleSave() {
 		onExtract={extractData}
 	/>
 
-	<ProductForm {product} bind:formData {errors} />
+	<ProductForm bind:formData {errors} />
 
 	{#snippet footer()}
 		<Button variant="secondary" onclick={onClose} disabled={isSaving}>

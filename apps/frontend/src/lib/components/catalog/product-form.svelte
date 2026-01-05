@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { Product, StockStatus, Segment } from "@totem/types";
+import type { StockStatus, Segment } from "@totem/types";
 import FormField from "$lib/components/ui/form-field.svelte";
 import Input from "$lib/components/ui/input.svelte";
 import Textarea from "$lib/components/ui/textarea.svelte";
@@ -18,12 +18,11 @@ type FormData = {
 };
 
 type Props = {
-  product: Product | null;
   formData: FormData;
   errors: Record<string, string>;
 };
 
-let { product, formData = $bindable(), errors }: Props = $props();
+let { formData = $bindable(), errors }: Props = $props();
 </script>
 
 <div class="space-y-6">
