@@ -7,13 +7,16 @@ import Badge from "$lib/components/ui/badge.svelte";
 import MessageBubble from "$lib/components/conversations/message-bubble.svelte";
 import ConversationItem from "$lib/components/conversations/conversation-item.svelte";
 import PageTitle from "$lib/components/shared/page-title.svelte";
-import type { ReplayData, Conversation } from "@totem/types";
+import type { ReplayData, Conversation, TestPersona } from "@totem/types";
 import type { PageData } from "./$types";
 
 let { data }: { data: PageData } = $props();
 
 let testConversations = $state<Conversation[]>([]);
+let personas = $state<TestPersona[]>([]);
+let selectedPersonaId = $state<string | null>(null);
 let selectedPhone = $state<string | null>(null);
+let showPersonaDialog = $state(false);
 let messages = $state<any[]>([]);
 let currentInput = $state("");
 let conversation = $state<any>(null);
@@ -33,6 +36,10 @@ async function loadTestConversations() {
   );
 }
 
+async function loadPersonas() {
+  personas = await fetchApi<TestPersona[]>("/api/simulator/personas");
+}
+
 async function loadConversation(phone: string) {
   const data = await fetchApi<any>(`/api/simulator/conversation/${phone}`);
   conversation = data.conversation;
@@ -46,6 +53,15 @@ function scrollToBottom() {
   }
 }
 
+function openPersonaDialog() {
+  showPersonaDialog = true;
+}
+
+function closePersonaDialog() {
+  showPersonaDialog = false;
+  selectedPersonaId = null;
+}
+
 async function createNewConversation() {
   loading = true;
   try {
@@ -55,11 +71,12 @@ async function createNewConversation() {
     await fetchApi("/api/simulator/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phoneNumber }),
+      body: JSON.stringify({ phoneNumber, personaId: selectedPersonaId }),
     });
 
     await loadTestConversations();
     selectedPhone = phoneNumber;
+    closePersonaDialog();
   } catch (error) {
     console.error("Failed to create conversation:", error);
     alert("Error al crear simulación");
@@ -273,6 +290,9 @@ $effect(() => {
 });
 
 onMount(() => {
+  // Load personas first
+  loadPersonas();
+
   // Check if we should load a replay conversation (from server data)
   if (data.loadPhone) {
     loadReplayConversation(data.loadPhone);
@@ -299,7 +319,7 @@ onMount(() => {
 <PageTitle title="Simulador" />
 
 <div class="flex h-[calc(100vh-65px)] overflow-hidden bg-white">
-	<!-- Conversation List -->
+	<!-- Conversation list -->
 	<div class="w-full md:w-80 xl:w-96 border-r border-ink-900/10 bg-white flex flex-col shrink-0">
 		<div class="p-6 border-b border-ink-900/10 flex items-center justify-between">
 			<div>
@@ -308,17 +328,33 @@ onMount(() => {
 				</span>
 				<h2 class="text-2xl font-serif">Simulador</h2>
 			</div>
-			<button
-				onclick={createNewConversation}
-				disabled={loading}
-				class="w-8 h-8 flex items-center justify-center text-ink-900 hover:bg-ink-50 rounded-full transition-colors disabled:opacity-50"
-				title="Nueva simulación"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<line x1="12" y1="5" x2="12" y2="19"></line>
-					<line x1="5" y1="12" x2="19" y2="12"></line>
-				</svg>
-			</button>
+			<div class="flex gap-2">
+				{#if data.user.role === 'admin' || data.user.role === 'developer'}
+					<a
+						href="/dashboard/personas"
+						class="w-8 h-8 flex items-center justify-center text-ink-900 hover:bg-ink-50 rounded-full transition-colors"
+						title="Gestionar personas"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+							<circle cx="9" cy="7" r="4"></circle>
+							<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+							<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+						</svg>
+					</a>
+				{/if}
+				<button
+					onclick={openPersonaDialog}
+					disabled={loading}
+					class="w-8 h-8 flex items-center justify-center text-ink-900 hover:bg-ink-50 rounded-full transition-colors disabled:opacity-50"
+					title="Nueva simulación"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="12" y1="5" x2="12" y2="19"></line>
+						<line x1="5" y1="12" x2="19" y2="12"></line>
+					</svg>
+				</button>
+			</div>
 		</div>
 
 		<div class="overflow-y-auto flex-1">
@@ -354,15 +390,25 @@ onMount(() => {
 									{formatPhone(selectedPhone)}
 								{/if}
 							</h2>
-							{#if replayMode && replayMetadata}
-								<Badge variant="warning" class="text-xs">
-									DEPURACIÓN: {replayMetadata.conversationId} • {replayMetadata.finalState}
-								</Badge>
-							{/if}
-						</div>
+						{#if replayMode && replayMetadata}
+							<Badge variant="warning" class="text-xs">
+								DEPURACIÓN: {replayMetadata.conversationId} • {replayMetadata.finalState}
+							</Badge>
+						{/if}
+					</div>
 
-						<!-- Context Data Bar -->
-						<div class="flex items-center gap-4 text-[10px] font-mono uppercase tracking-wider text-ink-500">
+					<!-- Context Data Bar -->
+					<div class="flex items-center gap-4 text-[10px] font-mono uppercase tracking-wider text-ink-500">
+						{#if conversation.persona_id}
+							{@const persona = personas.find(p => p.id === conversation.persona_id)}
+							{#if persona}
+								<div class="flex gap-2">
+									<span class="text-ink-300">Persona:</span>
+									<span class="text-ink-900 font-bold">{persona.segment.toUpperCase()}</span>
+								</div>
+								<div class="w-px h-3 bg-ink-200"></div>
+							{/if}
+						{/if}
 							<div class="flex gap-2">
 								<span class="text-ink-300">Segmento:</span>
 								<span class="text-ink-900 font-bold">{conversation.segment || "—"}</span>
@@ -523,3 +569,63 @@ onMount(() => {
 		{/if}
 	</div>
 </div>
+
+<!-- Persona selection dialog -->
+{#if showPersonaDialog}
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<div 
+		class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" 
+		role="dialog"
+		aria-modal="true"
+		tabindex="-1"
+		onclick={closePersonaDialog}
+		onkeydown={(e) => e.key === 'Escape' && closePersonaDialog()}
+	>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div 
+			class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" 
+			onclick={(e) => e.stopPropagation()}
+		>
+			<div class="p-6 border-b border-ink-900/10">
+				<h3 class="text-xl font-serif text-ink-900">Nueva conversación</h3>
+				<p class="text-sm text-ink-500 mt-1">Escoge una persona de prueba</p>
+			</div>
+
+			<div class="p-6 space-y-2 max-h-96 overflow-y-auto">
+				<button
+					onclick={() => { selectedPersonaId = null; createNewConversation(); }}
+					class="w-full text-left px-4 py-3 border border-ink-900/20 rounded-lg hover:border-ink-900/40 hover:bg-ink-50/50 transition-colors"
+				>
+					<div class="font-medium text-ink-900 mb-0.5">Sin persona</div>
+					<div class="text-xs text-ink-500">Usar proveedores FNB/GASO reales</div>
+				</button>
+
+				{#each personas as persona (persona.id)}
+					<button
+						onclick={() => { selectedPersonaId = persona.id; createNewConversation(); }}
+						class="w-full text-left px-4 py-3 border border-ink-900/20 rounded-lg hover:border-ink-900/40 hover:bg-ink-50/50 transition-colors"
+					>
+						<div class="flex items-center gap-2 mb-0.5">
+							<span class="font-medium text-ink-900">{persona.name}</span>
+							<span class="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-ink-100 text-ink-600">
+								{persona.segment}
+							</span>
+						</div>
+						<div class="text-xs text-ink-500">{persona.description}</div>
+					</button>
+				{/each}
+			</div>
+
+			<div class="p-6 border-t border-ink-900/10 flex justify-end">
+				<Button variant="secondary" onclick={closePersonaDialog}>
+					Cancelar
+				</Button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+
+
+

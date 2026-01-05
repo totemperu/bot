@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     status TEXT DEFAULT 'active' CHECK(status IN ('active', 'human_takeover', 'closed')),
     handover_reason TEXT,
     is_simulation INTEGER DEFAULT 0 CHECK(is_simulation IN (0, 1)),
+    persona_id TEXT,
     last_activity_at INTEGER NOT NULL DEFAULT (unixepoch('now', 'subsec') * 1000),
     -- Agent workflow fields
     products_interested TEXT DEFAULT '[]',
@@ -104,6 +105,20 @@ CREATE TABLE IF NOT EXISTS orders (
     calidda_notes TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch('now', 'subsec') * 1000),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch('now', 'subsec') * 1000)
+);
+
+CREATE TABLE IF NOT EXISTS test_personas (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    segment TEXT NOT NULL CHECK(segment IN ('fnb', 'gaso', 'not_eligible')),
+    client_name TEXT NOT NULL,
+    dni TEXT NOT NULL,
+    credit_line REAL NOT NULL,
+    nse INTEGER,
+    is_active INTEGER DEFAULT 1 CHECK(is_active IN (0, 1)),
+    created_by TEXT REFERENCES users(id),
+    created_at INTEGER NOT NULL DEFAULT (unixepoch('now', 'subsec') * 1000)
 );
 
 CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(last_activity_at DESC);

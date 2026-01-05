@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
 import process from "node:process";
 import type { ProviderCheckResult } from "@totem/types";
+import { db } from "../db/index.ts";
+import { PersonasService } from "./personas.ts";
 
 type FNBSession = { token: string; allyId: string; expiresAt: Date };
 let fnbSession: FNBSession | null = null;
@@ -187,7 +189,29 @@ async function getFNBSession(): Promise<FNBSession> {
 }
 
 export const FNBProvider = {
-  async checkCredit(dni: string): Promise<ProviderCheckResult> {
+  async checkCredit(
+    dni: string,
+    phoneNumber?: string,
+  ): Promise<ProviderCheckResult> {
+    // Check if this is a simulation with a persona
+    if (phoneNumber) {
+      const conv = db
+        .prepare(
+          "SELECT is_simulation, persona_id FROM conversations WHERE phone_number = ?",
+        )
+        .get(phoneNumber) as
+        | { is_simulation: number; persona_id: string | null }
+        | undefined;
+
+      if (conv?.is_simulation === 1 && conv.persona_id) {
+        const persona = PersonasService.getById(conv.persona_id);
+        if (persona) {
+          console.log(`[FNB] Using test persona: ${persona.name}`);
+          return PersonasService.toProviderResult(persona);
+        }
+      }
+    }
+
     // Check if provider is blocked
     if (!isProviderAvailable(fnbHealth)) {
       console.log(
@@ -382,7 +406,29 @@ async function queryPowerBI(
 }
 
 export const GasoProvider = {
-  async checkEligibility(dni: string): Promise<ProviderCheckResult> {
+  async checkEligibility(
+    dni: string,
+    phoneNumber?: string,
+  ): Promise<ProviderCheckResult> {
+    // Check if this is a simulation with a persona
+    if (phoneNumber) {
+      const conv = db
+        .prepare(
+          "SELECT is_simulation, persona_id FROM conversations WHERE phone_number = ?",
+        )
+        .get(phoneNumber) as
+        | { is_simulation: number; persona_id: string | null }
+        | undefined;
+
+      if (conv?.is_simulation === 1 && conv.persona_id) {
+        const persona = PersonasService.getById(conv.persona_id);
+        if (persona) {
+          console.log(`[GASO] Using test persona: ${persona.name}`);
+          return PersonasService.toProviderResult(persona);
+        }
+      }
+    }
+
     // Check if provider is blocked
     if (!isProviderAvailable(gasoHealth)) {
       return {

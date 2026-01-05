@@ -38,6 +38,11 @@ let { conversation, isSelected, onclick, href }: Props = $props();
         <span class="text-[10px] uppercase tracking-widest font-bold text-ink-300 group-hover:text-ink-400 transition-colors">
             {conversation.current_state}
         </span>
+		{#if conversation.persona_id}
+			<span class="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+				TEST
+			</span>
+		{/if}
     </div>
 
 	{#if conversation.handover_reason}
@@ -72,6 +77,11 @@ let { conversation, isSelected, onclick, href }: Props = $props();
         <span class="text-[10px] uppercase tracking-widest font-bold text-ink-300 group-hover:text-ink-400 transition-colors">
             {conversation.current_state}
         </span>
+		{#if conversation.persona_id}
+			<span class="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+				TEST
+			</span>
+		{/if}
     </div>
 
 	{#if conversation.handover_reason}

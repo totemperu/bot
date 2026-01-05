@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { processMessage } from "../agent/engine.ts";
 import { WhatsAppService } from "../services/whatsapp.ts";
+import { PersonasService } from "../services/personas.ts";
 import {
   getOrCreateConversation,
   resetSession,
@@ -10,6 +11,96 @@ import { db } from "../db/index.ts";
 import type { Conversation } from "@totem/types";
 
 const simulator = new Hono();
+
+// Get available test personas
+simulator.get("/personas", (c) => {
+  const personas = PersonasService.getAll();
+  return c.json(personas);
+});
+
+// Create new test persona (admin/developer only)
+simulator.post("/personas", async (c) => {
+  const user = c.get("user");
+
+  if (!user || (user.role !== "admin" && user.role !== "developer")) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const { id, name, description, segment, clientName, dni, creditLine, nse } =
+    await c.req.json();
+
+  if (
+    !id ||
+    !name ||
+    !description ||
+    !segment ||
+    !clientName ||
+    !dni ||
+    creditLine === undefined
+  ) {
+    return c.json({ error: "Missing required fields" }, 400);
+  }
+
+  try {
+    const persona = PersonasService.create(
+      {
+        id,
+        name,
+        description,
+        segment,
+        clientName,
+        dni,
+        creditLine,
+        nse,
+      },
+      user.id,
+    );
+    return c.json(persona);
+  } catch (error) {
+    console.error("Failed to create persona:", error);
+    return c.json({ error: "Failed to create persona" }, 500);
+  }
+});
+
+// Update test persona (admin/developer only)
+simulator.patch("/personas/:id", async (c) => {
+  const user = c.get("user");
+
+  if (!user || (user.role !== "admin" && user.role !== "developer")) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const personaId = c.req.param("id");
+  const updates = await c.req.json();
+
+  try {
+    PersonasService.update(personaId, updates);
+    const updated = PersonasService.getById(personaId);
+    return c.json(updated);
+  } catch (error) {
+    console.error("Failed to update persona:", error);
+    return c.json({ error: "Failed to update persona" }, 500);
+  }
+});
+
+// Delete test persona (admin/developer only)
+simulator.delete("/personas/:id", (c) => {
+  const user = c.get("user");
+
+  if (!user || (user.role !== "admin" && user.role !== "developer")) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const personaId = c.req.param("id");
+
+  try {
+    PersonasService.delete(personaId);
+    return c.json({ status: "deleted" });
+  } catch (error) {
+    console.error("Failed to delete persona:", error);
+    return c.json({ error: "Failed to delete persona" }, 500);
+  }
+});
 
 // List all test conversations
 simulator.get("/conversations", (c) => {
@@ -26,10 +117,18 @@ simulator.get("/conversations", (c) => {
 
 // Create new test conversation
 simulator.post("/conversations", async (c) => {
-  const { phoneNumber } = await c.req.json();
+  const { phoneNumber, personaId } = await c.req.json();
 
   if (!phoneNumber) {
     return c.json({ error: "phoneNumber required" }, 400);
+  }
+
+  // Validate persona if provided
+  if (personaId) {
+    const persona = PersonasService.getById(personaId);
+    if (!persona) {
+      return c.json({ error: "Invalid persona_id" }, 400);
+    }
   }
 
   // Check if already exists
@@ -41,8 +140,14 @@ simulator.post("/conversations", async (c) => {
     return c.json({ error: "Conversation already exists" }, 400);
   }
 
-  // Create new test conversation
-  const conv = getOrCreateConversation(phoneNumber, true);
+  // Create new test conversation with persona
+  db.prepare(
+    "INSERT INTO conversations (phone_number, current_state, status, is_simulation, persona_id) VALUES (?, ?, ?, ?, ?)",
+  ).run(phoneNumber, "INIT", "active", 1, personaId || null);
+
+  const conv = db
+    .prepare("SELECT * FROM conversations WHERE phone_number = ?")
+    .get(phoneNumber) as Conversation;
 
   return c.json(conv);
 });

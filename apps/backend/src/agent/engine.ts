@@ -158,7 +158,7 @@ async function handleCheckFNB(
 ): Promise<void> {
   const phoneNumber = conv.phone_number;
   const isSimulation = conv.is_simulation === 1;
-  const result = await FNBProvider.checkCredit(dni);
+  const result = await FNBProvider.checkCredit(dni, phoneNumber);
 
   if (result.eligible && checkFNBEligibility(result.credit)) {
     // FNB eligible - select variant for message
@@ -207,7 +207,7 @@ async function handleCheckGaso(
 ): Promise<void> {
   const phoneNumber = conv.phone_number;
   const isSimulation = conv.is_simulation === 1;
-  const result = await GasoProvider.checkEligibility(dni);
+  const result = await GasoProvider.checkEligibility(dni, phoneNumber);
 
   // Check if PowerBI is down and we used fallback (notify dev team once)
   if (

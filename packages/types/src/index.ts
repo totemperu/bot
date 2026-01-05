@@ -37,6 +37,7 @@ export type Conversation = {
   context_data: string;
   handover_reason: string | null;
   is_simulation: number;
+  persona_id: string | null;
   // Agent workflow fields
   products_interested: string;
   delivery_address: string | null;
@@ -126,6 +127,18 @@ export type ProviderCheckResult = {
   name?: string;
   nse?: number;
   reason?: string;
+};
+
+export type TestPersona = {
+  id: string;
+  name: string;
+  description: string;
+  segment: "fnb" | "gaso" | "not_eligible";
+  clientName: string;
+  dni: string;
+  creditLine: number;
+  nse?: number;
+  isActive: boolean;
 };
 
 export type ReplayMetadata = {
