@@ -110,6 +110,7 @@ $effect(() => {
 <div class="relative">
 	<button
 		bind:this={triggerRef}
+		{id}
 		type="button"
 		{disabled}
 		aria-haspopup="listbox"
