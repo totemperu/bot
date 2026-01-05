@@ -28,6 +28,7 @@ import conversations from "./routes/conversations.ts";
 import analytics from "./routes/analytics.ts";
 import admin from "./routes/admin.ts";
 import catalog from "./routes/catalog.ts";
+import orders from "./routes/orders.ts";
 
 import { getProvidersHealth } from "./services/providers.ts";
 import { ReportService } from "./services/reports.ts";
@@ -126,6 +127,7 @@ app.route("/api/simulator", simulator);
 app.route("/api/conversations", conversations);
 app.route("/api/analytics", analytics);
 app.route("/api/catalog", catalog);
+app.route("/api/orders", orders);
 
 // Admin-only routes
 app.use("/api/admin/*", requireRole("admin"));

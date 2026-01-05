@@ -15,6 +15,13 @@ export type ConversationState =
 
 export type ConversationStatus = "active" | "human_takeover" | "closed";
 export type SaleStatus = "pending" | "confirmed" | "rejected" | "no_answer";
+export type OrderStatus =
+  | "pending"
+  | "supervisor_approved"
+  | "supervisor_rejected"
+  | "calidda_approved"
+  | "calidda_rejected"
+  | "delivered";
 
 export type Conversation = {
   phone_number: string;
@@ -93,6 +100,24 @@ export type AuditLog = {
   resource_id: string | null;
   metadata: string;
   created_at: string;
+};
+
+export type Order = {
+  id: string;
+  order_number: string;
+  conversation_phone: string;
+  client_name: string;
+  client_dni: string;
+  products: string;
+  total_amount: number;
+  delivery_address: string;
+  delivery_reference: string | null;
+  status: OrderStatus;
+  assigned_agent: string | null;
+  supervisor_notes: string | null;
+  calidda_notes: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type ProviderCheckResult = {

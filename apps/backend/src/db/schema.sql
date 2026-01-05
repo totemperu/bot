@@ -88,6 +88,24 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at INTEGER NOT NULL DEFAULT (unixepoch('now', 'subsec') * 1000)
 );
 
+CREATE TABLE IF NOT EXISTS orders (
+    id TEXT PRIMARY KEY,
+    order_number TEXT UNIQUE NOT NULL,
+    conversation_phone TEXT NOT NULL REFERENCES conversations(phone_number),
+    client_name TEXT NOT NULL,
+    client_dni TEXT NOT NULL,
+    products TEXT NOT NULL,
+    total_amount REAL NOT NULL,
+    delivery_address TEXT NOT NULL,
+    delivery_reference TEXT,
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'supervisor_approved', 'supervisor_rejected', 'calidda_approved', 'calidda_rejected', 'delivered')),
+    assigned_agent TEXT REFERENCES users(id),
+    supervisor_notes TEXT,
+    calidda_notes TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch('now', 'subsec') * 1000),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch('now', 'subsec') * 1000)
+);
+
 CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(last_activity_at DESC);
 CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);
 CREATE INDEX IF NOT EXISTS idx_products_segment ON catalog_products(segment);
@@ -96,3 +114,6 @@ CREATE INDEX IF NOT EXISTS idx_messages_phone ON messages(phone_number, created_
 CREATE INDEX IF NOT EXISTS idx_analytics_phone ON analytics_events(phone_number);
 CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events(event_type);
 CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_conversation ON orders(conversation_phone);
+CREATE INDEX IF NOT EXISTS idx_orders_agent ON orders(assigned_agent);

@@ -74,6 +74,12 @@ let { data }: { data: PageData } = $props();
 			category="Exportación"
 			title="Reportes"
 		/>
+		<DashboardGridItem
+			href="/dashboard/orders"
+			number="08"
+			category="Operaciones"
+			title="Órdenes"
+		/>
 
 		{#if auth.isAdmin}
 			<DashboardGridItem

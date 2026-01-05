@@ -4,6 +4,7 @@ import type {
   Conversation,
   Message as MessageType,
   SaleStatus,
+  Order,
 } from "@totem/types";
 import { fetchApi } from "$lib/utils/api";
 import {
@@ -11,6 +12,7 @@ import {
   formatPrice,
   formatDateTime,
 } from "$lib/utils/formatters";
+import { toast } from "$lib/state/toast.svelte";
 import PageTitle from "$lib/components/shared/page-title.svelte";
 import Button from "$lib/components/ui/button.svelte";
 import MessageThread from "$lib/components/conversations/message-thread.svelte";
@@ -27,6 +29,8 @@ let conversation = $state<Conversation | null>(null);
 let messages = $state<MessageType[]>([]);
 let messageText = $state("");
 let saving = $state(false);
+let order = $state<Order | null>(null);
+let creatingOrder = $state(false);
 
 // Agent editable fields
 let agentNotes = $state("");
@@ -43,7 +47,24 @@ $effect(() => {
   saleStatus = data.conversation?.sale_status || "pending";
   deliveryAddress = data.conversation?.delivery_address || "";
   deliveryReference = data.conversation?.delivery_reference || "";
+
+  // Load order if conversation exists
+  if (data.conversation) {
+    loadOrder();
+  }
 });
+
+async function loadOrder() {
+  if (!conversation) return;
+  try {
+    const response = await fetchApi<{ order: Order | null }>(
+      `/api/orders/by-conversation/${conversation.phone_number}`,
+    );
+    order = response.order;
+  } catch (error) {
+    console.error("Failed to load order:", error);
+  }
+}
 
 const isHumanTakeover = $derived(conversation?.status === "human_takeover");
 
@@ -115,6 +136,49 @@ async function saveAgentData() {
     console.error("Failed to save:", error);
   } finally {
     saving = false;
+  }
+}
+
+async function createOrder() {
+  if (!conversation) return;
+  creatingOrder = true;
+
+  try {
+    // Parse products from products_interested if it exists
+    let productsArray = [];
+    try {
+      productsArray = JSON.parse(conversation.products_interested || "[]");
+    } catch {
+      productsArray = [];
+    }
+
+    // Calculate total (if products have price info, otherwise 0)
+    const totalAmount = productsArray.reduce((sum: number, p: any) => {
+      return sum + (p.price || 0);
+    }, 0);
+
+    const newOrder = await fetchApi<Order>("/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversationPhone: conversation.phone_number,
+        clientName: conversation.client_name || "Sin nombre",
+        clientDni: conversation.dni || "",
+        products: conversation.products_interested,
+        totalAmount: totalAmount,
+        deliveryAddress: deliveryAddress,
+        deliveryReference: deliveryReference,
+      }),
+    });
+
+    order = newOrder;
+    toast.success(`Orden creada: ${newOrder.order_number}`);
+    goto(`/dashboard/orders/${newOrder.id}`);
+  } catch (error) {
+    console.error("Failed to create order:", error);
+    toast.error("Error al crear la orden");
+  } finally {
+    creatingOrder = false;
   }
 }
 
@@ -309,6 +373,34 @@ function goBack() {
           <Button onclick={saveAgentData} disabled={saving} class="w-full">
             {saving ? "Guardando..." : "Guardar cambios"}
           </Button>
+
+          <!-- Create Order Button (only if sale confirmed and no order exists) -->
+          {#if saleStatus === "confirmed" && !order && deliveryAddress}
+            <div class="bg-cream-100 border border-cream-300 p-4">
+              <p class="text-xs text-ink-600 mb-3">
+                La venta está confirmada. Puedes crear una orden para este cliente.
+              </p>
+              <Button onclick={createOrder} disabled={creatingOrder} variant="primary" class="w-full">
+                {creatingOrder ? "Creando..." : "Crear Orden"}
+              </Button>
+            </div>
+          {/if}
+
+          <!-- Order Link (if order exists) -->
+          {#if order}
+            <div class="bg-white border border-cream-200 p-6">
+              <h3 class="text-xs font-bold uppercase tracking-widest text-ink-400 mb-4">
+                Orden creada
+              </h3>
+              <a 
+                href="/dashboard/orders/{order.id}"
+                class="block px-4 py-3 bg-cream-100 hover:bg-cream-200 border border-cream-300 transition-colors"
+              >
+                <p class="font-mono text-sm font-bold text-ink-900">{order.order_number}</p>
+                <p class="text-xs text-ink-500 mt-1">Ver detalles de orden →</p>
+              </a>
+            </div>
+          {/if}
 
           <!-- Metadata -->
           <div class="text-xs text-ink-300 space-y-1">
