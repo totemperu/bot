@@ -41,12 +41,12 @@ onMount(() => {
 });
 </script>
 
-<PageTitle title="Personas de prueba" />
+<PageTitle title="Perfiles de cliente" />
 
 <div class="p-8 max-w-6xl mx-auto">
 	<div class="flex items-center justify-between mb-8">
 		<div>
-			<h1 class="text-3xl font-serif text-ink-900 mb-2">Personas de prueba</h1>
+			<h1 class="text-3xl font-serif text-ink-900 mb-2">Perfiles de cliente de prueba</h1>
 			<p class="text-ink-500">Gestiona los perfiles de cliente utilizados para las simulaciones.</p>
 		</div>
 		<Button href="/dashboard/personas/create">
@@ -71,7 +71,7 @@ onMount(() => {
 				<table class="w-full text-left text-sm">
 					<thead class="bg-cream-50 border-b border-ink-900/10 text-ink-500 font-mono uppercase text-xs tracking-wider">
 						<tr>
-							<th class="px-6 py-4 font-bold">Nombre / ID</th>
+							<th class="px-6 py-4 font-bold">Nombre</th>
 							<th class="px-6 py-4 font-bold">Segmento</th>
 							<th class="px-6 py-4 font-bold">Cliente</th>
 							<th class="px-6 py-4 font-bold">Detalles</th>
@@ -83,7 +83,6 @@ onMount(() => {
 							<tr class="hover:bg-cream-50/50 transition-colors group">
 								<td class="px-6 py-4">
 									<div class="font-medium text-ink-900">{persona.name}</div>
-									<div class="text-xs text-ink-400 font-mono mt-0.5">{persona.id}</div>
 									<div class="text-xs text-ink-500 mt-1 max-w-xs truncate">{persona.description}</div>
 								</td>
 								<td class="px-6 py-4">
