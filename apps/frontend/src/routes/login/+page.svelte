@@ -29,7 +29,7 @@ async function handleSubmit() {
       body: JSON.stringify({ username, password }),
     });
 
-    await auth.checkAuth();
+    auth.hydrate(data.user);
     goto("/dashboard");
   } catch {
     error = "Credenciales no válidas";
