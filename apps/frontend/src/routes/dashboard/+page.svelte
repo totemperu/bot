@@ -30,6 +30,27 @@ let { data }: { data: PageData } = $props();
 						<span class="text-sm font-mono text-ink-600">Operativo</span>
 					</div>
 				</div>
+
+				{#if auth.isSalesAgent}
+					<div class="border-t border-ink-900/10 pt-6 mb-6">
+						<p class="text-xs uppercase tracking-widest text-ink-400 mb-2 font-bold">
+							Tu disponibilidad
+						</p>
+						<button
+							onclick={() => auth.toggleAvailability()}
+							class="flex items-center gap-2 w-full px-3 py-2 border border-ink-200 hover:border-ink-900 transition-colors"
+						>
+							<span class="w-2 h-2 rounded-full {auth.isAvailable ? 'bg-green-500' : 'bg-gray-400'}"></span>
+							<span class="text-sm font-mono">
+								{auth.isAvailable ? 'Disponible' : 'No disponible'}
+							</span>
+						</button>
+						<p class="text-xs text-ink-400 mt-2">
+							{auth.isAvailable ? 'Recibirás nuevas asignaciones' : 'No recibirás nuevas asignaciones'}
+						</p>
+					</div>
+				{/if}
+
 				<button onclick={() => auth.logout()} class="text-sm hover:underline text-ink-400">
 					Cerrar sesión
 				</button>

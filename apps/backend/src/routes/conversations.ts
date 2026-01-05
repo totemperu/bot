@@ -10,7 +10,26 @@ const conversations = new Hono();
 
 // List all conversations
 conversations.get("/", (c) => {
+  const user = c.get("user");
   const status = c.req.query("status");
+  
+  // Sales agents only see their assigned conversations
+  if (user.role === "sales_agent") {
+    let query =
+      "SELECT * FROM conversations WHERE is_simulation = 0 AND assigned_agent = ? ORDER BY last_activity_at DESC LIMIT 100";
+    let params: any[] = [user.id];
+
+    if (status) {
+      query =
+        "SELECT * FROM conversations WHERE is_simulation = 0 AND assigned_agent = ? AND status = ? ORDER BY last_activity_at DESC LIMIT 100";
+      params = [user.id, status];
+    }
+
+    const rows = db.prepare(query).all(...params) as Conversation[];
+    return c.json(rows);
+  }
+
+  // Admins and developers see all conversations
   let query =
     "SELECT * FROM conversations WHERE is_simulation = 0 ORDER BY last_activity_at DESC LIMIT 100";
   let params: any[] = [];
@@ -99,6 +118,35 @@ conversations.post("/:phone/release", (c) => {
   ).run(phoneNumber);
 
   logAction(user.id, "release", "conversation", phoneNumber);
+
+  return c.json({ success: true });
+});
+
+// Decline assignment and reassign
+conversations.post("/:phone/decline-assignment", async (c) => {
+  const phoneNumber = c.req.param("phone");
+  const user = c.get("user");
+
+  const conv = db
+    .prepare("SELECT assigned_agent, client_name FROM conversations WHERE phone_number = ?")
+    .get(phoneNumber) as { assigned_agent: string | null; client_name: string | null } | undefined;
+
+  if (!conv || conv.assigned_agent !== user.id) {
+    return c.json({ error: "Not assigned to you" }, 403);
+  }
+
+  // Reset assignment
+  db.prepare(
+    `UPDATE conversations 
+     SET assignment_notified_at = NULL, assigned_agent = NULL 
+     WHERE phone_number = ?`,
+  ).run(phoneNumber);
+
+  logAction(user.id, "decline_assignment", "conversation", phoneNumber);
+
+  // Trigger reassignment
+  const { assignNextAgent } = await import("../services/assignment.ts");
+  await assignNextAgent(phoneNumber, conv.client_name);
 
   return c.json({ success: true });
 });
@@ -209,6 +257,73 @@ conversations.get("/:phone/replay", (c) => {
   logAction(user.id, "export_replay", "conversation", phoneNumber);
 
   return c.json(replayData);
+});
+
+// Upload contract recording
+conversations.post("/:phone/upload-contract", async (c) => {
+  const phoneNumber = c.req.param("phone");
+  const user = c.get("user");
+  const formData = await c.req.formData();
+
+  const contractFile = formData.get("contract") as File | null;
+  const audioFile = formData.get("audio") as File | null;
+
+  if (!contractFile || !audioFile) {
+    return c.json({ error: "Contract and audio files required" }, 400);
+  }
+
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+
+  // Create contracts directory
+  const contractsDir = path.join(
+    process.cwd(),
+    "data",
+    "contracts",
+    phoneNumber,
+  );
+  await fs.mkdir(contractsDir, { recursive: true });
+
+  // Save contract file
+  const contractExt = contractFile.name.split(".").pop();
+  const contractPath = path.join(contractsDir, `contract.${contractExt}`);
+  await Bun.write(contractPath, contractFile);
+
+  // Save audio file
+  const audioExt = audioFile.name.split(".").pop();
+  const audioPath = path.join(contractsDir, `audio.${audioExt}`);
+  await Bun.write(audioPath, audioFile);
+
+  // Update conversation
+  const now = Date.now();
+  db.prepare(
+    `UPDATE conversations 
+     SET recording_contract_path = ?, recording_audio_path = ?, recording_uploaded_at = ?
+     WHERE phone_number = ?`,
+  ).run(
+    `contracts/${phoneNumber}/contract.${contractExt}`,
+    `contracts/${phoneNumber}/audio.${audioExt}`,
+    now,
+    phoneNumber,
+  );
+
+  logAction(user.id, "upload_contract", "conversation", phoneNumber, {
+    contractFile: contractFile.name,
+    audioFile: audioFile.name,
+  });
+
+  // Notify supervisors
+  const { notifyTeam } = await import("../services/notifier.ts");
+  await notifyTeam(
+    "sales",
+    `📄 Contrato subido\n\n` +
+      `Cliente: ${formData.get("clientName") || phoneNumber}\n` +
+      `Agente: ${user.name}\n` +
+      `Teléfono: ${phoneNumber}\n\n` +
+      `Revisar en: ${process.env.FRONTEND_URL || "http://localhost:5173"}/dashboard/conversations/${phoneNumber}`,
+  );
+
+  return c.json({ success: true });
 });
 
 export default conversations;

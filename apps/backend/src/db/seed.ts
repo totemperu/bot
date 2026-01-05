@@ -16,6 +16,84 @@ export function seedDatabase(db: Database) {
     ).run(adminId, "admin", hash, "admin", "Administrador", null);
 
     console.log("Admin user created (username: admin, password: admin123)");
+
+    // Create sample sales agents for testing
+    const agent1Id = crypto.randomUUID();
+    const agent2Id = crypto.randomUUID();
+    const agentHash = bcrypt.hashSync("agent123", 10);
+
+    db.prepare(
+      `INSERT INTO users (id, username, password_hash, role, name, phone_number, is_available, created_by) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      agent1Id,
+      "agent1",
+      agentHash,
+      "sales_agent",
+      "María González",
+      "+51987654321",
+      1,
+      adminId,
+    );
+
+    db.prepare(
+      `INSERT INTO users (id, username, password_hash, role, name, phone_number, is_available, created_by) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      agent2Id,
+      "agent2",
+      agentHash,
+      "sales_agent",
+      "Carlos Pérez",
+      "+51987654322",
+      1,
+      adminId,
+    );
+
+    console.log(
+      "Sample agents created (agent1/agent2, password: agent123)",
+    );
+
+    // Create sample conversations for testing
+    const now = Date.now();
+    const testPhone = "+51999888777";
+    const assignedPhone = "+51999888888";
+
+    db.prepare(
+      `INSERT INTO conversations (phone_number, client_name, dni, segment, credit_line, current_state, status, is_simulation, last_activity_at, context_data)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      testPhone,
+      "Juan Pérez",
+      "12345678",
+      "fnb",
+      5000,
+      "OFFER_PRODUCTS",
+      "active",
+      0,
+      now,
+      JSON.stringify({ offeredCategory: "celulares" }),
+    );
+
+    db.prepare(
+      `INSERT INTO conversations (phone_number, client_name, dni, segment, credit_line, current_state, status, assigned_agent, assignment_notified_at, is_simulation, last_activity_at, context_data)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      assignedPhone,
+      "Ana Torres",
+      "87654321",
+      "gaso",
+      2500,
+      "CLOSING",
+      "human_takeover",
+      agent1Id,
+      now - 2 * 60 * 1000, // 2 minutes ago
+      0,
+      now,
+      JSON.stringify({ purchaseConfirmed: true, offeredCategory: "cocinas" }),
+    );
+
+    console.log("Sample conversations created for testing");
   }
 
   const productCheck = db

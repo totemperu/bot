@@ -13,6 +13,7 @@ import {
   formatDateTime,
 } from "$lib/utils/formatters";
 import { toast } from "$lib/state/toast.svelte";
+import { auth } from "$lib/state/auth.svelte";
 import PageTitle from "$lib/components/shared/page-title.svelte";
 import Button from "$lib/components/ui/button.svelte";
 import MessageThread from "$lib/components/conversations/message-thread.svelte";
@@ -31,6 +32,9 @@ let messageText = $state("");
 let saving = $state(false);
 let order = $state<Order | null>(null);
 let creatingOrder = $state(false);
+let uploadingContract = $state(false);
+let contractFile: File | null = $state(null);
+let audioFile: File | null = $state(null);
 
 // Agent editable fields
 let agentNotes = $state("");
@@ -42,31 +46,23 @@ let deliveryReference = $state("");
 $effect(() => {
   conversation = data.conversation;
   messages = data.messages || [];
+  order = data.order || null;
   // Reset form fields when conversation changes
   agentNotes = data.conversation?.agent_notes || "";
   saleStatus = data.conversation?.sale_status || "pending";
   deliveryAddress = data.conversation?.delivery_address || "";
   deliveryReference = data.conversation?.delivery_reference || "";
-
-  // Load order if conversation exists
-  if (data.conversation) {
-    loadOrder();
-  }
 });
 
-async function loadOrder() {
-  if (!conversation) return;
-  try {
-    const response = await fetchApi<{ order: Order | null }>(
-      `/api/orders/by-conversation/${conversation.phone_number}`,
-    );
-    order = response.order;
-  } catch (error) {
-    console.error("Failed to load order:", error);
-  }
-}
-
 const isHumanTakeover = $derived(conversation?.status === "human_takeover");
+const isPendingAssignment = $derived(
+  conversation?.assigned_agent &&
+  conversation?.assignment_notified_at &&
+  !conversation?.handover_reason
+);
+const isAssignedToCurrentUser = $derived(
+  conversation?.assigned_agent === data.user?.id
+);
 
 const saleStatusOptions: { value: SaleStatus; label: string }[] = [
   { value: "pending", label: "Pendiente" },
@@ -81,6 +77,30 @@ async function handleTakeover() {
     method: "POST",
   });
   await refreshConversation();
+  toast.success("Has tomado control de la conversación");
+}
+
+async function handleAcceptAssignment() {
+  if (!conversation) return;
+  await fetchApi(`/api/conversations/${conversation.phone_number}/takeover`, {
+    method: "POST",
+  });
+  await refreshConversation();
+  toast.success("Asignación aceptada");
+}
+
+async function handleDeclineAssignment() {
+  if (!conversation) return;
+  try {
+    await fetchApi(`/api/conversations/${conversation.phone_number}/decline-assignment`, {
+      method: "POST",
+    });
+    toast.info("Asignación rechazada. Se asignará a otro agente.");
+    goto("/dashboard/conversations");
+  } catch (error) {
+    console.error("Failed to decline:", error);
+    toast.error("Error al rechazar asignación");
+  }
 }
 
 async function handleRelease() {
@@ -136,6 +156,36 @@ async function saveAgentData() {
     console.error("Failed to save:", error);
   } finally {
     saving = false;
+  }
+}
+
+async function handleUploadContract() {
+  if (!(contractFile && audioFile && conversation)) return;
+
+  uploadingContract = true;
+  try {
+    const formData = new FormData();
+    formData.append("contract", contractFile);
+    formData.append("audio", audioFile);
+    formData.append("clientName", conversation.client_name || "");
+
+    await fetchApi(
+      `/api/conversations/${conversation.phone_number}/upload-contract`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
+
+    toast.success("Contrato subido exitosamente. Supervisores notificados.");
+    await refreshConversation();
+    contractFile = null;
+    audioFile = null;
+  } catch (error) {
+    console.error("Failed to upload contract:", error);
+    toast.error("Error al subir contrato");
+  } finally {
+    uploadingContract = false;
   }
 }
 
@@ -200,6 +250,36 @@ function goBack() {
   </div>
 {:else}
   <div class="min-h-screen bg-cream-100">
+    <!-- Assignment Banner -->
+    {#if isPendingAssignment && isAssignedToCurrentUser && auth.isSalesAgent}
+      <div class="bg-blue-600 text-white">
+        <div class="max-w-7xl mx-auto px-8 py-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-bold mb-1">🎯 Nueva asignación de cliente</p>
+              <p class="text-sm text-blue-100">Este cliente está listo para contratar. Acepta para continuar o rechaza para reasignar.</p>
+            </div>
+            <div class="flex gap-3">
+              <Button 
+                onclick={handleAcceptAssignment}
+                variant="secondary"
+                class="bg-white! text-blue-600! hover:bg-blue-50!"
+              >
+                Aceptar
+              </Button>
+              <Button 
+                onclick={handleDeclineAssignment}
+                variant="secondary"
+                class="bg-blue-700! text-white! hover:bg-blue-800! border-blue-500!"
+              >
+                Rechazar
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
+
     <!-- Header -->
     <div class="bg-white border-b border-ink-900/10 sticky top-[65px] z-10">
       <div class="max-w-7xl mx-auto px-8 py-6">
@@ -373,6 +453,56 @@ function goBack() {
           <Button onclick={saveAgentData} disabled={saving} class="w-full">
             {saving ? "Guardando..." : "Guardar cambios"}
           </Button>
+
+          <!-- Contract Upload (only for agents with takeover, before recording uploaded) -->
+          {#if isHumanTakeover && !conversation.recording_uploaded_at && auth.isSalesAgent}
+            <div class="bg-cream-50 border border-cream-300 p-6">
+              <h3 class="text-xs font-bold uppercase tracking-widest text-ink-400 mb-4">
+                📄 Subir Contrato
+              </h3>
+              <p class="text-xs text-ink-600 mb-4">
+                Sube el contrato firmado y la grabación de la llamada para completar la venta.
+              </p>
+              
+              <div class="space-y-4">
+                <div>
+                  <label for="contract-file" class="block text-xs text-ink-500 mb-2 font-medium">
+                    Contrato (PDF/DOCX)
+                  </label>
+                  <input
+                    id="contract-file"
+                    type="file"
+                    accept=".pdf,.docx,.doc"
+                    onchange={(e) => (contractFile = e.currentTarget.files?.[0] || null)}
+                    class="w-full text-sm border border-cream-300 p-2 file:mr-4 file:py-1 file:px-3 file:border-0 file:text-xs file:font-medium file:bg-ink-900 file:text-white hover:file:bg-ink-700 file:cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label for="audio-file" class="block text-xs text-ink-500 mb-2 font-medium">
+                    Grabación de Audio
+                  </label>
+                  <input
+                    id="audio-file"
+                    type="file"
+                    accept=".mp3,.m4a,.wav,.ogg"
+                    onchange={(e) => (audioFile = e.currentTarget.files?.[0] || null)}
+                    class="w-full text-sm border border-cream-300 p-2 file:mr-4 file:py-1 file:px-3 file:border-0 file:text-xs file:font-medium file:bg-ink-900 file:text-white hover:file:bg-ink-700 file:cursor-pointer"
+                  />
+                </div>
+
+                <Button
+                  onclick={handleUploadContract}
+                  disabled={!contractFile || !audioFile || uploadingContract}
+                  class="w-full"
+                >
+                  {uploadingContract ? "Subiendo..." : "Subir Contrato y Grabación"}
+                </Button>
+              </div>
+            </div>
+          {/if}
+
+          <!-- ton>
 
           <!-- Create Order Button (only if sale confirmed and no order exists) -->
           {#if saleStatus === "confirmed" && !order && deliveryAddress}

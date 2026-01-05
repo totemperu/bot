@@ -1,8 +1,9 @@
 import { client, getGroupJID } from "./client.ts";
 
 type QueuedMessage = {
-  channel: "agent" | "dev";
+  channel: "agent" | "dev" | "sales" | "direct";
   message: string;
+  phoneNumber?: string;
   attempts: number;
 };
 
@@ -12,8 +13,12 @@ const RETRY_DELAY_MS = 5000;
 
 let processing = false;
 
-export function enqueueMessage(channel: "agent" | "dev", message: string) {
-  queue.push({ channel, message, attempts: 0 });
+export function enqueueMessage(
+  channel: "agent" | "dev" | "sales" | "direct",
+  message: string,
+  phoneNumber?: string,
+) {
+  queue.push({ channel, message, phoneNumber, attempts: 0 });
   processQueue();
 }
 
@@ -26,9 +31,9 @@ async function processQueue() {
     const item = queue.shift()!;
 
     try {
-      await sendMessage(item.channel, item.message);
+      await sendMessage(item.channel, item.message, item.phoneNumber);
       console.log(
-        `Sent to ${item.channel}: ${item.message.substring(0, 50)}...`,
+        `Sent to ${item.channel}${item.phoneNumber ? ` (${item.phoneNumber})` : ""}: ${item.message.substring(0, 50)}...`,
       );
     } catch (error) {
       console.error(`Failed to send to ${item.channel}:`, error);
@@ -52,14 +57,27 @@ async function processQueue() {
   processing = false;
 }
 
-async function sendMessage(channel: "agent" | "dev", message: string) {
+async function sendMessage(
+  channel: "agent" | "dev" | "sales" | "direct",
+  message: string,
+  phoneNumber?: string,
+) {
   if (!client) {
     throw new Error("WhatsApp client not initialized");
   }
 
-  const jid = getGroupJID(channel);
+  // Direct messaging to specific phone number
+  if (channel === "direct" && phoneNumber) {
+    const formattedJid = `${phoneNumber.replace(/\D/g, "")}@s.whatsapp.net`;
+    await client.sendMessage(formattedJid, message);
+    return;
+  }
+
+  // Group messaging
+  const channelName = channel as "agent" | "dev" | "sales";
+  const jid = getGroupJID(channelName);
   if (!jid) {
-    throw new Error(`No group JID configured for channel: ${channel}`);
+    throw new Error(`No group JID configured for channel: ${channelName}`);
   }
 
   await client.sendMessage(jid, message);

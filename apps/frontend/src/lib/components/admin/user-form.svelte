@@ -17,6 +17,7 @@ let formData = $state({
   username: "",
   password: "",
   role: "sales_agent",
+  phoneNumber: "",
 });
 
 let message = $state("");
@@ -41,6 +42,7 @@ async function handleSubmit() {
       username: "",
       password: "",
       role: "sales_agent",
+      phoneNumber: "",
     };
     onSuccess();
   } catch (error) {
@@ -60,6 +62,15 @@ async function handleSubmit() {
 
 	<FormField label="Contraseña temporal" for="password">
 		<Input id="password" type="password" bind:value={formData.password} />
+	</FormField>
+
+	<FormField label="Teléfono (WhatsApp)" for="phoneNumber">
+		<Input 
+			id="phoneNumber" 
+			bind:value={formData.phoneNumber} 
+			placeholder="+51987654321"
+		/>
+		<p class="text-xs text-ink-400 mt-1">Solo para agentes de ventas. Incluir código de país.</p>
 	</FormField>
 
 	<FormField label="Rol de acceso" for="role">

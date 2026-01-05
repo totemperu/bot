@@ -18,6 +18,7 @@ import { CatalogService } from "../services/catalog.ts";
 import * as LLM from "../services/llm.ts";
 import * as T from "@totem/core";
 import { selectVariant, formatFirstName } from "@totem/core";
+import { assignNextAgent } from "../services/assignment.ts";
 
 export async function processMessage(
   phoneNumber: string,
@@ -91,6 +92,11 @@ async function executeTransition(
     output.nextState,
     output.updatedContext,
   );
+
+  // Check if purchase was confirmed and trigger agent assignment
+  if (output.updatedContext.purchaseConfirmed && !conv.is_simulation) {
+    await assignNextAgent(conv.phone_number, conv.client_name);
+  }
 
   // Execute commands
   for (const command of output.commands) {

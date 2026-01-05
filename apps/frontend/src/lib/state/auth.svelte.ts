@@ -5,6 +5,7 @@ type User = {
   username: string;
   role: string;
   name: string;
+  is_available?: number;
 };
 
 type AuthState = {
@@ -39,6 +40,12 @@ function createAuthState() {
     get canEdit() {
       return this.isAdmin || this.isDeveloper;
     },
+    get isSalesAgent() {
+      return state.user?.role === "sales_agent";
+    },
+    get isAvailable() {
+      return state.user?.is_available === 1;
+    },
     hydrate(user: User | null) {
       state.user = user;
       state.isAuthenticated = Boolean(user);
@@ -64,6 +71,24 @@ function createAuthState() {
         if (browser && window.location.pathname !== "/login") {
           window.location.href = "/login";
         }
+      }
+    },
+    async toggleAvailability() {
+      if (!state.user) return;
+
+      const newStatus = state.user.is_available === 1 ? 0 : 1;
+      try {
+        await fetchApi("/api/auth/availability", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isAvailable: newStatus === 1 }),
+        });
+
+        if (state.user) {
+          state.user.is_available = newStatus;
+        }
+      } catch (error) {
+        console.error("Failed to toggle availability:", error);
       }
     },
   };

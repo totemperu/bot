@@ -6,14 +6,26 @@ import process from "node:process";
 const app = new Hono();
 
 app.post("/notify", async (c) => {
-  const { channel, message } = await c.req.json();
+  const { channel, message, phoneNumber } = await c.req.json();
 
   if (!channel || !message) {
     return c.json({ error: "channel and message required" }, 400);
   }
 
-  if (channel !== "agent" && channel !== "dev") {
-    return c.json({ error: "channel must be 'agent' or 'dev'" }, 400);
+  // Support direct messaging to specific phone numbers
+  if (channel === "direct") {
+    if (!phoneNumber) {
+      return c.json({ error: "phoneNumber required for direct channel" }, 400);
+    }
+    enqueueMessage("direct", message, phoneNumber);
+    return c.json({ status: "queued" });
+  }
+
+  if (channel !== "agent" && channel !== "dev" && channel !== "sales") {
+    return c.json(
+      { error: "channel must be 'agent', 'dev', 'sales', or 'direct'" },
+      400,
+    );
   }
 
   enqueueMessage(channel, message);

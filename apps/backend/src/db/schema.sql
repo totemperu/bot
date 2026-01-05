@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('admin', 'developer', 'sales_agent')),
     name TEXT NOT NULL,
+    phone_number TEXT,
     is_active INTEGER DEFAULT 1 CHECK(is_active IN (0, 1)),
+    is_available INTEGER DEFAULT 1 CHECK(is_available IN (0, 1)),
     created_at INTEGER NOT NULL DEFAULT (unixepoch('now', 'subsec') * 1000),
     created_by TEXT REFERENCES users(id)
 );
@@ -57,7 +59,12 @@ CREATE TABLE IF NOT EXISTS conversations (
     delivery_reference TEXT,
     assigned_agent TEXT REFERENCES users(id),
     agent_notes TEXT,
-    sale_status TEXT DEFAULT 'pending' CHECK(sale_status IN ('pending', 'confirmed', 'rejected', 'no_answer'))
+    sale_status TEXT DEFAULT 'pending' CHECK(sale_status IN ('pending', 'confirmed', 'rejected', 'no_answer')),
+    -- Contract recording fields
+    recording_contract_path TEXT,
+    recording_audio_path TEXT,
+    recording_uploaded_at INTEGER,
+    assignment_notified_at INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -121,6 +128,12 @@ CREATE TABLE IF NOT EXISTS test_personas (
     created_at INTEGER NOT NULL DEFAULT (unixepoch('now', 'subsec') * 1000)
 );
 
+CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch('now', 'subsec') * 1000)
+);
+
 CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(last_activity_at DESC);
 CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);
 CREATE INDEX IF NOT EXISTS idx_products_segment ON catalog_products(segment);
@@ -132,3 +145,5 @@ CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id, created_at DESC)
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_conversation ON orders(conversation_phone);
 CREATE INDEX IF NOT EXISTS idx_orders_agent ON orders(assigned_agent);
+CREATE INDEX IF NOT EXISTS idx_conversations_assigned ON conversations(assigned_agent);
+CREATE INDEX IF NOT EXISTS idx_users_available ON users(role, is_available, is_active);

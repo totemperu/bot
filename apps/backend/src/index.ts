@@ -39,6 +39,12 @@ const app = new Hono();
 initializeDatabase(db);
 seedDatabase(db);
 
+// Start periodic timeout check (every minute)
+setInterval(async () => {
+  const { checkAndReassignTimeouts } = await import("./services/assignment.ts");
+  await checkAndReassignTimeouts();
+}, 60 * 1000);
+
 // Global middleware
 app.use("/*", securityHeaders);
 app.use(
@@ -116,6 +122,22 @@ app.post("/api/auth/logout", requireAuth, async (c) => {
 app.get("/api/auth/me", requireAuth, (c) => {
   const user = c.get("user");
   return c.json({ user });
+});
+
+app.patch("/api/auth/availability", requireAuth, async (c) => {
+  const user = c.get("user");
+  const { isAvailable } = await c.req.json();
+
+  if (typeof isAvailable !== "boolean") {
+    return c.json({ error: "isAvailable must be boolean" }, 400);
+  }
+
+  db.prepare("UPDATE users SET is_available = ? WHERE id = ?").run(
+    isAvailable ? 1 : 0,
+    user.id,
+  );
+
+  return c.json({ success: true, isAvailable });
 });
 
 // Protected routes

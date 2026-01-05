@@ -45,6 +45,11 @@ export type Conversation = {
   assigned_agent: string | null;
   agent_notes: string | null;
   sale_status: SaleStatus;
+  // Contract recording fields
+  recording_contract_path: string | null;
+  recording_audio_path: string | null;
+  recording_uploaded_at: string | null;
+  assignment_notified_at: string | null;
 };
 
 export type Product = {
@@ -79,7 +84,9 @@ export type User = {
   password_hash: string;
   role: UserRole;
   name: string;
+  phone_number: string | null;
   is_active: number;
+  is_available: number;
   created_at: string;
   created_by: string | null;
 };

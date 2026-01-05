@@ -20,7 +20,7 @@ admin.get("/users", (c) => {
 
 // Create user
 admin.post("/users", async (c) => {
-  const { username, password, role, name } = await c.req.json();
+  const { username, password, role, name, phoneNumber } = await c.req.json();
   const creator = c.get("user");
 
   if (!username || !password || !role || !name) {
@@ -43,9 +43,9 @@ admin.post("/users", async (c) => {
   const hash = bcrypt.hashSync(password, 10);
 
   db.prepare(
-    `INSERT INTO users (id, username, password_hash, role, name, created_by) 
-     VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(id, username, hash, role, name, creator.id);
+    `INSERT INTO users (id, username, password_hash, role, name, phone_number, created_by) 
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, username, hash, role, name, phoneNumber || null, creator.id);
 
   logAction(creator.id, "create_user", "user", id, {
     username,

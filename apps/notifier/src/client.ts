@@ -75,13 +75,24 @@ export async function initializeWhatsAppClient() {
   await client.initialize();
 }
 
-export function getGroupJID(channel: "agent" | "dev"): string | null {
-  const envKey =
-    channel === "agent" ? "WHATSAPP_GROUP_AGENT" : "WHATSAPP_GROUP_DEV";
-  const envJID = process.env[envKey];
+export function getGroupJID(
+  channel: "agent" | "dev" | "sales",
+): string | null {
+  const envKeyMap = {
+    agent: "WHATSAPP_GROUP_AGENT",
+    dev: "WHATSAPP_GROUP_DEV",
+    sales: "WHATSAPP_GROUP_SALES",
+  };
+
+  const envJID = process.env[envKeyMap[channel]];
   if (envJID) return envJID;
 
   // Try mapping
-  const mappingKey = channel === "agent" ? "agent_team" : "dev_team";
-  return groupMapping.get(mappingKey) || null;
+  const mappingKeyMap = {
+    agent: "agent_team",
+    dev: "dev_team",
+    sales: "sales_team",
+  };
+
+  return groupMapping.get(mappingKeyMap[channel]) || null;
 }
