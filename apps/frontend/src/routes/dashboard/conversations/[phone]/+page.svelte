@@ -256,7 +256,7 @@ function goBack() {
         <div class="max-w-7xl mx-auto px-8 py-4">
           <div class="flex items-center justify-between">
             <div>
-              <p class="font-bold mb-1">🎯 Nueva asignación de cliente</p>
+              <p class="font-bold mb-1">Nueva asignación de cliente</p>
               <p class="text-sm text-blue-100">Este cliente está listo para contratar. Acepta para continuar o rechaza para reasignar.</p>
             </div>
             <div class="flex gap-3">
