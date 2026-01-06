@@ -1,6 +1,7 @@
 node_modules
 .env
 .env.production
+.cloudflare-url
 
 # build and dev generated files
 *.tsbuildinfo
