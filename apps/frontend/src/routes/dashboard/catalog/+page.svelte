@@ -36,7 +36,7 @@ async function loadProducts() {
 }
 
 function handleProductClick(product: Product) {
-  if (auth.canEdit) {
+  if (auth.canEditCatalog) {
     selectedProduct = product;
     showModal = true;
   }
@@ -69,7 +69,7 @@ onMount(() => {
 <div class="max-w-7xl mx-auto p-8 md:p-12 min-h-screen">
 	<PageHeader title="Catálogo de productos" subtitle="Inventario">
 		{#snippet actions()}
-			{#if auth.canEdit}
+			{#if auth.canEditCatalog}
 				<Button onclick={openCreateModal}>Nuevo producto</Button>
 			{/if}
 		{/snippet}
@@ -77,7 +77,7 @@ onMount(() => {
 
 	<ProductGrid
 		{products}
-		canEdit={auth.canEdit}
+		canEdit={auth.canEditCatalog}
 		onProductClick={handleProductClick}
 		onStockUpdate={handleStockUpdate}
 	/>
@@ -92,7 +92,7 @@ onMount(() => {
 	/>
 {/if}
 
-{#if catalogSelection.selectedCount > 0 && auth.canEdit}
+{#if catalogSelection.selectedCount > 0 && auth.canEditCatalog}
 	<BulkActionsPanel
 		{selectedProducts}
 		onClose={() => catalogSelection.clear()}

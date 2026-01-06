@@ -27,7 +27,7 @@ admin.post("/users", async (c) => {
     return c.json({ error: "Missing required fields" }, 400);
   }
 
-  if (!["admin", "developer", "sales_agent"].includes(role)) {
+  if (!["admin", "developer", "supervisor", "sales_agent"].includes(role)) {
     return c.json({ error: "Invalid role" }, 400);
   }
 

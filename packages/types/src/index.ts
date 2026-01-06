@@ -1,6 +1,6 @@
 export type Segment = "fnb" | "gaso";
 export type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
-export type UserRole = "admin" | "developer" | "sales_agent";
+export type UserRole = "admin" | "developer" | "supervisor" | "sales_agent";
 
 export type ConversationState =
   | "INIT"

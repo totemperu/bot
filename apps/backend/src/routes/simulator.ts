@@ -8,9 +8,12 @@ import {
   updateConversationState,
 } from "../agent/context.ts";
 import { db } from "../db/index.ts";
+import { requireRole } from "../middleware/auth.ts";
 import type { Conversation } from "@totem/types";
 
 const simulator = new Hono();
+
+simulator.use("/*", requireRole("admin", "developer"));
 
 // Get available test personas
 simulator.get("/personas", (c) => {
@@ -18,13 +21,9 @@ simulator.get("/personas", (c) => {
   return c.json(personas);
 });
 
-// Create new test persona (admin/developer only)
+// Create new test persona
 simulator.post("/personas", async (c) => {
   const user = c.get("user");
-
-  if (!user || (user.role !== "admin" && user.role !== "developer")) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
 
   const { id, name, description, segment, clientName, dni, creditLine, nse } =
     await c.req.json();
@@ -62,14 +61,8 @@ simulator.post("/personas", async (c) => {
   }
 });
 
-// Update test persona (admin/developer only)
+// Update test persona
 simulator.patch("/personas/:id", async (c) => {
-  const user = c.get("user");
-
-  if (!user || (user.role !== "admin" && user.role !== "developer")) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
   const personaId = c.req.param("id");
   const updates = await c.req.json();
 
@@ -83,14 +76,8 @@ simulator.patch("/personas/:id", async (c) => {
   }
 });
 
-// Delete test persona (admin/developer only)
+// Delete test persona
 simulator.delete("/personas/:id", (c) => {
-  const user = c.get("user");
-
-  if (!user || (user.role !== "admin" && user.role !== "developer")) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
   const personaId = c.req.param("id");
 
   try {

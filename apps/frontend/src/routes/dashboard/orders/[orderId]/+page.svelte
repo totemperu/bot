@@ -3,6 +3,7 @@ import { goto, invalidateAll } from "$app/navigation";
 import type { OrderStatus } from "@totem/types";
 import { fetchApi } from "$lib/utils/api";
 import { toast } from "$lib/state/toast.svelte";
+import { auth } from "$lib/state/auth.svelte";
 import PageTitle from "$lib/components/shared/page-title.svelte";
 import Button from "$lib/components/ui/button.svelte";
 import {
@@ -206,79 +207,93 @@ function parseProducts(productsJson: string) {
 
         <!-- Sidebar -->
         <div class="space-y-6">
-          <!-- Approval Management -->
+          <!-- Approval management -->
           {#if order.status !== "delivered" && !order.status.includes("rejected")}
-            <div class="bg-white border border-cream-200 p-6">
-              <h2 class="text-xs font-bold uppercase tracking-widest text-ink-400 mb-4">
-                Gestión de Aprobación
-              </h2>
-              
-              <div class="space-y-4">
-                {#if order.status === "pending" || order.status === "supervisor_approved"}
-                  <div>
-                    <label for="approval-notes" class="block text-xs text-ink-400 mb-1">
-                      Notas de aprobación/rechazo
-                    </label>
-                    <textarea
-                      id="approval-notes"
-                      bind:value={approvalNotes}
-                      rows="3"
-                      class="w-full px-3 py-2 border border-ink-200 text-sm focus:outline-none focus:border-ink-900 resize-none"
-                      placeholder="Ingrese observaciones..."
-                    ></textarea>
-                  </div>
-                {/if}
+            {@const canApproveSuper = auth.canApproveOrders}
+            {@const canApproveCalidda = auth.canApproveCaliida}
+            {@const showApprovalSection = (order.status === "pending" && canApproveSuper) || 
+                                          (order.status === "supervisor_approved" && canApproveCalidda) ||
+                                          (order.status === "calidda_approved" && canApproveSuper)}
+            
+            {#if showApprovalSection}
+              <div class="bg-white border border-cream-200 p-6">
+                <h2 class="text-xs font-bold uppercase tracking-widest text-ink-400 mb-4">
+                  Gestión de Aprobación
+                </h2>
+                
+                <div class="space-y-4">
+                  {#if order.status === "pending" || order.status === "supervisor_approved"}
+                    <div>
+                      <label for="approval-notes" class="block text-xs text-ink-400 mb-1">
+                        Notas de aprobación/rechazo
+                      </label>
+                      <textarea
+                        id="approval-notes"
+                        bind:value={approvalNotes}
+                        rows="3"
+                        class="w-full px-3 py-2 border border-ink-200 text-sm focus:outline-none focus:border-ink-900 resize-none"
+                        placeholder="Ingrese observaciones..."
+                      ></textarea>
+                    </div>
+                  {/if}
 
-                <div class="grid grid-cols-2 gap-3">
-                  {#if order.status === "pending"}
-                    <Button 
-                      onclick={() => updateStatus("supervisor_approved", "supervisor")}
-                      disabled={processing}
-                      variant="primary"
-                      class="w-full"
-                    >
-                      Aprobar (Sup)
-                    </Button>
-                    <Button 
-                      onclick={() => updateStatus("supervisor_rejected", "supervisor")}
-                      disabled={processing}
-                      variant="secondary"
-                      class="w-full bg-red-50! text-red-700! hover:bg-red-100! border-red-200"
-                    >
-                      Rechazar
-                    </Button>
-                  {:else if order.status === "supervisor_approved"}
-                    <Button 
-                      onclick={() => updateStatus("calidda_approved", "calidda")}
-                      disabled={processing}
-                      variant="primary"
-                      class="w-full"
-                    >
-                      Aprobar (Calidda)
-                    </Button>
-                    <Button 
-                      onclick={() => updateStatus("calidda_rejected", "calidda")}
-                      disabled={processing}
-                      variant="secondary"
-                      class="w-full bg-red-50! text-red-700! hover:bg-red-100! border-red-200"
-                    >
-                      Rechazar
-                    </Button>
-                  {:else if order.status === "calidda_approved"}
-                    <div class="col-span-2">
+                  <div class="grid grid-cols-2 gap-3">
+                    {#if order.status === "pending" && canApproveSuper}
                       <Button 
-                        onclick={() => updateStatus("delivered")}
+                        onclick={() => updateStatus("supervisor_approved", "supervisor")}
                         disabled={processing}
                         variant="primary"
                         class="w-full"
                       >
-                        Marcar como Entregado
+                        Aprobar (Sup)
                       </Button>
-                    </div>
-                  {/if}
+                      <Button 
+                        onclick={() => updateStatus("supervisor_rejected", "supervisor")}
+                        disabled={processing}
+                        variant="secondary"
+                        class="w-full bg-red-50! text-red-700! hover:bg-red-100! border-red-200"
+                      >
+                        Rechazar
+                      </Button>
+                    {:else if order.status === "supervisor_approved" && canApproveCalidda}
+                      <Button 
+                        onclick={() => updateStatus("calidda_approved", "calidda")}
+                        disabled={processing}
+                        variant="primary"
+                        class="w-full"
+                      >
+                        Aprobar (Calidda)
+                      </Button>
+                      <Button 
+                        onclick={() => updateStatus("calidda_rejected", "calidda")}
+                        disabled={processing}
+                        variant="secondary"
+                        class="w-full bg-red-50! text-red-700! hover:bg-red-100! border-red-200"
+                      >
+                        Rechazar
+                      </Button>
+                    {:else if order.status === "calidda_approved" && canApproveSuper}
+                      <div class="col-span-2">
+                        <Button 
+                          onclick={() => updateStatus("delivered")}
+                          disabled={processing}
+                          variant="primary"
+                          class="w-full"
+                        >
+                          Marcar como Entregado
+                        </Button>
+                      </div>
+                    {/if}
+                  </div>
                 </div>
               </div>
-            </div>
+            {:else}
+              <div class="bg-cream-50 border border-cream-200 p-6">
+                <p class="text-xs text-ink-400 text-center">
+                  No tienes permisos para aprobar esta orden en su estado actual.
+                </p>
+              </div>
+            {/if}
           {/if}
 
           <!-- Timeline -->

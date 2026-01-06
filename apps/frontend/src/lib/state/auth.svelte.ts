@@ -37,7 +37,22 @@ function createAuthState() {
     get isDeveloper() {
       return state.user?.role === "developer";
     },
-    get canEdit() {
+    get isSupervisor() {
+      return state.user?.role === "supervisor";
+    },
+    get canEditCatalog() {
+      return this.isAdmin || this.isDeveloper || this.isSupervisor;
+    },
+    get canApproveOrders() {
+      return this.isAdmin || this.isSupervisor;
+    },
+    get canApproveCaliida() {
+      return this.isAdmin;
+    },
+    get canAccessReports() {
+      return this.isAdmin || this.isDeveloper || this.isSupervisor;
+    },
+    get canAccessSimulator() {
       return this.isAdmin || this.isDeveloper;
     },
     get isSalesAgent() {

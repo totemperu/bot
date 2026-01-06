@@ -1,7 +1,18 @@
 import type { PageServerLoad } from "./$types";
+import { redirect } from "@sveltejs/kit";
 import { fetchBackend } from "$lib/utils/server-fetch";
 
-export const load: PageServerLoad = async ({ cookies }) => {
+export const load: PageServerLoad = async ({ cookies, locals }) => {
+  // Role check: only admin, developer, supervisor
+  if (!locals.user) {
+    redirect(307, "/login");
+  }
+
+  const allowedRoles = ["admin", "developer", "supervisor"];
+  if (!allowedRoles.includes(locals.user.role)) {
+    redirect(303, "/dashboard");
+  }
+
   const sessionToken = cookies.get("session");
   if (!sessionToken) {
     return { user: null, todayCount: 0 };

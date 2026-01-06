@@ -161,16 +161,22 @@ app.route("/webhook", webhook);
 app.use("/api/*", requireAuth);
 app.route("/api/simulator", simulator);
 app.route("/api/conversations", conversations);
-app.route("/api/analytics", analytics);
 app.route("/api/catalog", catalog);
 app.route("/api/orders", orders);
+
+// Analytics routes
+const requireAnalyticsAccess = requireRole("admin", "developer", "supervisor");
+app.use("/api/analytics/*", requireAnalyticsAccess);
+app.route("/api/analytics", analytics);
 
 // Admin-only routes
 app.use("/api/admin/*", requireRole("admin"));
 app.route("/api/admin", admin);
 
 // Reports
-app.get("/api/reports/daily", requireAuth, (c) => {
+const requireReportsAccess = requireRole("admin", "developer", "supervisor");
+
+app.get("/api/reports/daily", requireReportsAccess, (c) => {
   const dateStr = c.req.query("date");
   const date = dateStr ? new Date(dateStr) : new Date();
   const buffer = ReportService.generateDailyReport(date);
@@ -187,12 +193,12 @@ app.get("/api/reports/daily", requireAuth, (c) => {
   return c.body(buffer);
 });
 
-app.get("/api/reports/today-count", requireAuth, (c) => {
+app.get("/api/reports/today-count", requireReportsAccess, (c) => {
   const count = ReportService.getTodayContactCount();
   return c.json({ count });
 });
 
-app.get("/api/reports/activity", requireAuth, (c) => {
+app.get("/api/reports/activity", requireReportsAccess, (c) => {
   const startDateStr = c.req.query("startDate");
   const endDateStr = c.req.query("endDate");
   const segmentsStr = c.req.query("segments") || "fnb,gaso,none";
@@ -227,7 +233,7 @@ app.get("/api/reports/activity", requireAuth, (c) => {
   return c.body(buffer);
 });
 
-app.get("/api/reports/orders", requireAuth, (c) => {
+app.get("/api/reports/orders", requireReportsAccess, (c) => {
   const startDateStr = c.req.query("startDate");
   const endDateStr = c.req.query("endDate");
   const status = c.req.query("status") || "";

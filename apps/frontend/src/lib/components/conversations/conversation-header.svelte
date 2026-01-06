@@ -30,7 +30,7 @@ const isHumanTakeover = $derived(conversation.status === "human_takeover");
         </div>
 
         <div class="flex items-center gap-3">
-            {#if auth.canEdit && onLoadInSimulator}
+            {#if auth.canAccessSimulator && onLoadInSimulator}
                 <Button variant="secondary" onclick={onLoadInSimulator} class="py-2 text-xs">
                     Replay
                 </Button>

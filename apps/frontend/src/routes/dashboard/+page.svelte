@@ -77,27 +77,45 @@ let { data }: { data: PageData } = $props();
 			category="Riesgo & Crédito"
 			title="Proveedores"
 		/>
-		<DashboardGridItem
-			href="/dashboard/simulator"
-			number="04"
-			category="Entorno de pruebas"
-			title="Simulador"
-		/>
-		<DashboardGridItem
-			href="/dashboard/stats"
-			number="05"
-			category="Métricas"
-			title="Analytics"
-		/>
-		<DashboardGridItem
-			href="/dashboard/reports"
-			number="06"
-			category="Exportación"
-			title="Reportes"
-		/>
+
+		{#if auth.canAccessSimulator}
+			<DashboardGridItem
+				href="/dashboard/simulator"
+				number="04"
+				category="Entorno de pruebas"
+				title="Simulador"
+			/>
+		{:else}
+			<div class="bg-cream-100 p-12 border-b border-r border-ink-900/10 flex items-center justify-center opacity-50 cursor-not-allowed">
+				<span class="font-mono text-xs text-ink-400">ACCESO RESTRINGIDO</span>
+			</div>
+		{/if}
+
+		{#if auth.canAccessReports}
+			<DashboardGridItem
+				href="/dashboard/stats"
+				number="05"
+				category="Métricas"
+				title="Analytics"
+			/>
+			<DashboardGridItem
+				href="/dashboard/reports"
+				number="06"
+				category="Exportación"
+				title="Reportes"
+			/>
+		{:else}
+			<div class="bg-cream-100 p-12 border-b border-r border-ink-900/10 flex items-center justify-center opacity-50 cursor-not-allowed">
+				<span class="font-mono text-xs text-ink-400">ACCESO RESTRINGIDO</span>
+			</div>
+			<div class="bg-cream-100 p-12 border-b border-r border-ink-900/10 flex items-center justify-center opacity-50 cursor-not-allowed">
+				<span class="font-mono text-xs text-ink-400">ACCESO RESTRINGIDO</span>
+			</div>
+		{/if}
+
 		<DashboardGridItem
 			href="/dashboard/orders"
-			number="08"
+			number="07"
 			category="Operaciones"
 			title="Órdenes"
 		/>
@@ -105,7 +123,7 @@ let { data }: { data: PageData } = $props();
 		{#if auth.isAdmin}
 			<DashboardGridItem
 				href="/dashboard/admin"
-				number="07"
+				number="08"
 				category="Configuración"
 				title="Administración"
 				variant="dark"

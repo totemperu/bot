@@ -3,13 +3,17 @@ import { CatalogService } from "../services/catalog.ts";
 import { BulkImportService } from "../services/bulk-import.ts";
 import { extractProductData } from "../services/vision-extractor.ts";
 import { logAction } from "../services/audit.ts";
+import { requireRole } from "../middleware/auth.ts";
 import sharp from "sharp";
 import fs from "node:fs";
 import path from "node:path";
 
 const catalog = new Hono();
 
-// List all products
+// Middleware: write operations require admin, developer, or supervisor
+const requireCatalogWrite = requireRole("admin", "developer", "supervisor");
+
+// List all products (all authenticated users can view)
 catalog.get("/", (c) => {
   const segment = c.req.query("segment");
 
@@ -21,7 +25,7 @@ catalog.get("/", (c) => {
 });
 
 // Create product with image
-catalog.post("/", async (c) => {
+catalog.post("/", requireCatalogWrite, async (c) => {
   const user = c.get("user");
   const body = await c.req.parseBody();
 
@@ -99,7 +103,7 @@ catalog.post("/", async (c) => {
 });
 
 // Update product
-catalog.patch("/:id", async (c) => {
+catalog.patch("/:id", requireCatalogWrite, async (c) => {
   const id = c.req.param("id");
   const user = c.get("user");
   const updates = await c.req.json();
@@ -149,7 +153,7 @@ catalog.patch("/:id", async (c) => {
 });
 
 // Update product images
-catalog.post("/:id/images", async (c) => {
+catalog.post("/:id/images", requireCatalogWrite, async (c) => {
   const id = c.req.param("id");
   const user = c.get("user");
   const body = await c.req.parseBody();
@@ -214,7 +218,7 @@ catalog.post("/:id/images", async (c) => {
 });
 
 // Bulk update products
-catalog.post("/bulk-update", async (c) => {
+catalog.post("/bulk-update", requireCatalogWrite, async (c) => {
   const user = c.get("user");
   const { productIds, updates } = await c.req.json();
 
@@ -264,7 +268,7 @@ catalog.post("/bulk-update", async (c) => {
 });
 
 // Delete product
-catalog.delete("/:id", (c) => {
+catalog.delete("/:id", requireCatalogWrite, (c) => {
   const id = c.req.param("id");
   const user = c.get("user");
 
@@ -276,7 +280,7 @@ catalog.delete("/:id", (c) => {
 });
 
 // Extract product data from images (AI preview)
-catalog.post("/extract-preview", async (c) => {
+catalog.post("/extract-preview", requireCatalogWrite, async (c) => {
   const body = await c.req.parseBody();
 
   const mainImage = body.mainImage as File;
@@ -304,7 +308,7 @@ catalog.post("/extract-preview", async (c) => {
 });
 
 // Bulk import from CSV
-catalog.post("/bulk", async (c) => {
+catalog.post("/bulk", requireCatalogWrite, async (c) => {
   const user = c.get("user");
   const body = await c.req.parseBody();
 

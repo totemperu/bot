@@ -1,7 +1,52 @@
 import { Hono } from "hono";
 import { ordersService } from "../services/orders";
+import { logAction } from "../services/audit";
 
 const orders = new Hono();
+
+// Role validation helper for order status transitions
+function canUpdateOrderStatus(
+  userRole: string,
+  newStatus: string,
+): { allowed: boolean; reason?: string } {
+  // Supervisor-level approvals: admin or supervisor
+  if (
+    newStatus === "supervisor_approved" ||
+    newStatus === "supervisor_rejected"
+  ) {
+    if (userRole === "admin" || userRole === "supervisor") {
+      return { allowed: true };
+    }
+    return {
+      allowed: false,
+      reason: "Solo supervisores pueden aprobar/rechazar a nivel supervisor",
+    };
+  }
+
+  // Calidda-level approvals: admin only
+  if (newStatus === "calidda_approved" || newStatus === "calidda_rejected") {
+    if (userRole === "admin") {
+      return { allowed: true };
+    }
+    return {
+      allowed: false,
+      reason: "Solo administradores pueden aprobar/rechazar a nivel Calidda",
+    };
+  }
+
+  // Mark as delivered: admin or supervisor
+  if (newStatus === "delivered") {
+    if (userRole === "admin" || userRole === "supervisor") {
+      return { allowed: true };
+    }
+    return {
+      allowed: false,
+      reason: "Solo supervisores pueden marcar como entregado",
+    };
+  }
+
+  return { allowed: false, reason: "Transición de estado no permitida" };
+}
 
 // Get order metrics
 orders.get("/metrics", async (c) => {
@@ -79,6 +124,13 @@ orders.get("/by-conversation/:phone", async (c) => {
 orders.patch("/:id/status", async (c) => {
   const { id } = c.req.param();
   const body = await c.req.json();
+  const user = c.get("user");
+
+  // Check role permissions for this status transition
+  const permission = canUpdateOrderStatus(user.role, body.status);
+  if (!permission.allowed) {
+    return c.json({ error: permission.reason }, 403);
+  }
 
   const order = ordersService.updateOrderStatus(
     id,
@@ -86,6 +138,11 @@ orders.patch("/:id/status", async (c) => {
     body.notes,
     body.noteType,
   );
+
+  logAction(user.id, "update_order_status", "order", id, {
+    newStatus: body.status,
+    notes: body.notes,
+  });
 
   return c.json(order);
 });

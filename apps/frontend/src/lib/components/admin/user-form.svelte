@@ -79,6 +79,7 @@ async function handleSubmit() {
 			bind:value={formData.role}
 			items={[
 				{ value: "sales_agent", label: "Agente de ventas" },
+				{ value: "supervisor", label: "Supervisor" },
 				{ value: "developer", label: "Desarrollador" },
 				{ value: "admin", label: "Administrador" },
 			]}

@@ -1,13 +1,8 @@
--- BREAKING CHANGE: All timestamps stored as INTEGER (Unix milliseconds UTC)
--- Frontend handles timezone conversion for display (America/Lima GMT-5)
--- Industry standard pattern: numeric timestamps avoid timezone parsing issues
--- Migration required: Delete database.sqlite* files and re-seed
-
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL CHECK(role IN ('admin', 'developer', 'sales_agent')),
+    role TEXT NOT NULL CHECK(role IN ('admin', 'developer', 'supervisor', 'sales_agent')),
     name TEXT NOT NULL,
     phone_number TEXT,
     is_active INTEGER DEFAULT 1 CHECK(is_active IN (0, 1)),
