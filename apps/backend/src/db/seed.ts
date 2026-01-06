@@ -1,7 +1,222 @@
 import type { Database } from "bun:sqlite";
 import bcrypt from "bcryptjs";
+import { CatalogService } from "../services/catalog.ts";
+import type { Segment } from "@totem/types";
 
-export function seedDatabase(db: Database) {
+const CATALOG_SEED = [
+  {
+    image_main_id: "e4976160c1e346b8",
+    filename: "01.jpg",
+    category: "celulares",
+    name: "Cocinetta 2Q A gas",
+    price: 1799,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "51c9756bdb3b4f7a",
+    filename: "02.jpg",
+    category: "celulares",
+    name: "Samsung Galaxy A56",
+    price: 3399,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "7de286fb4a9a4f19",
+    filename: "01.jpg",
+    category: "fusion",
+    name: "Cocineta 2Q A gas",
+    price: 2199,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "71ea846b26174659",
+    filename: "02.jpg",
+    category: "fusion",
+    name: "Cocina de elección",
+    price: 2899,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "1d6fdc9cbee04bc3",
+    filename: "03.jpg",
+    category: "fusion",
+    name: "Cocinetta 2Q A gas",
+    price: 2399,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "67d0f026be9142ff",
+    filename: "04.jpg",
+    category: "fusion",
+    name: "Mabe Cocina 4Q",
+    price: 2999,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "77bcf7c50c054af4",
+    filename: "05.jpg",
+    category: "fusion",
+    name: "Mabe Refrigeradora 187L",
+    price: 3099,
+    installments: 18,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "150719b93c38461e",
+    filename: "06.jpg",
+    category: "fusion",
+    name: "Cocineta 2Q A gas",
+    price: 3499,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "b5e9a6deab044c42",
+    filename: "07.jpg",
+    category: "fusion",
+    name: "Mabe Cocina 4Q",
+    price: 4999,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "d6ce52ce24204be6",
+    filename: "08.jpg",
+    category: "fusion",
+    name: "Termo 5.5L A gas",
+    price: 3999,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "604dc5df458d4362",
+    filename: "09.jpg",
+    category: "fusion",
+    name: "Mabe Cocina",
+    price: 3199,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "6ce6f405a6144625",
+    filename: "10.jpg",
+    category: "fusion",
+    name: "Holi Termo a gas 5.5L",
+    price: 3299,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "99a1b24c11fa4f40",
+    filename: "11.jpg",
+    category: "fusion",
+    name: 'Hisense Smart TV 55"',
+    price: 3199,
+    installments: 18,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "ed3837d5ca554799",
+    filename: "01.jpg",
+    category: "lavadoras",
+    name: "LG Lavadora 16Kg WT16BVTB",
+    price: 2699,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "d0dc2578457a4e44",
+    filename: "02.jpg",
+    category: "lavadoras",
+    name: null,
+    price: null,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "24814848bf2c4ee0",
+    filename: "01.jpg",
+    category: "refrigeradoras",
+    name: null,
+    price: null,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "222a3c90f0f345c1",
+    filename: "02.jpg",
+    category: "refrigeradoras",
+    name: null,
+    price: null,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "05b04eb8ce3e4e4b",
+    filename: "01.jpg",
+    category: "tv",
+    name: null,
+    price: null,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "e1249ad5545a4bc2",
+    filename: "02.jpg",
+    category: "tv",
+    name: 'JVC Smart Tv 43" LT-43KM348',
+    price: 1799,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "1cc43a6627cb4389",
+    filename: "03.jpg",
+    category: "tv",
+    name: 'JVC Smart Tv 86" LT-86KB738',
+    price: 4999,
+    installments: null,
+    description: null,
+    segment: "gaso",
+  },
+  {
+    image_main_id: "5abbad939a8d4fd3",
+    filename: "04.jpg",
+    category: "tv",
+    name: "Mabe Cocina",
+    price: 4999,
+    installments: 18,
+    description: null,
+    segment: "gaso",
+  },
+];
+
+export async function seedDatabase(db: Database) {
   const adminCheck = db
     .prepare("SELECT count(*) as count FROM users")
     .get() as { count: number };
@@ -125,6 +340,44 @@ export function seedDatabase(db: Database) {
 
     console.log(`Created draft catalog period: ${periodName}`);
   }
+
+  // Ensure we have a period id to use for seeding products
+  const nowForPeriod = new Date();
+  const yearMonth = `${nowForPeriod.getFullYear()}-${String(nowForPeriod.getMonth() + 1).padStart(2, "0")}`;
+  const periodId = `period-${yearMonth}`;
+
+  // If there are no products for the current period, seed from the embedded CATALOG_SEED array
+  const productsCount = db
+    .prepare(
+      "SELECT count(*) as count FROM catalog_products WHERE period_id = ?",
+    )
+    .get(periodId) as { count: number };
+
+  if (productsCount.count === 0) {
+    try {
+      for (const entry of CATALOG_SEED) {
+        const productId = crypto.randomUUID();
+        CatalogService.create({
+          id: productId,
+          period_id: periodId,
+          segment: (entry.segment ?? "gaso") as Segment,
+          category: entry.category,
+          name: entry.name ?? `${entry.category}`,
+          description: entry.description ?? null,
+          price: entry.price ?? 0,
+          installments: entry.installments ?? null,
+          image_main_id: entry.image_main_id,
+          image_specs_id: null,
+          created_by: null as unknown as string,
+        });
+      }
+      console.log(
+        `Seeded ${CATALOG_SEED.length} catalog products from embedded seed data`,
+      );
+    } catch (err) {
+      console.error("Failed to seed catalog from CATALOG_SEED:", err);
+    }
+  }
 }
 
 // Main execution
@@ -136,7 +389,7 @@ if (import.meta.main) {
   initializeDatabase(db);
 
   console.log("Seeding database...");
-  seedDatabase(db);
+  await seedDatabase(db);
 
   console.log("Database setup complete!");
   process.exit(0);
