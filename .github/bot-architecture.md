@@ -1,34 +1,39 @@
 DATA_FLOW (WhatsApp Conversation):
 
 1. User sends WhatsApp message → Meta webhook fires POST /webhook
-2. Webhook (apps/backend/src/routes/webhook.ts) extracts message text and phone
+2. Frontend webhook proxy (apps/frontend/src/routes/webhook/+server.ts) forwards
+   request to backend
+3. Webhook (apps/backend/src/routes/webhook.ts) extracts message text and phone
    number
-3. Call processMessage(phoneNumber, message) in apps/backend/src/agent/engine.ts
-4. Engine retrieves/creates conversation context from SQLite (includes current
+4. Call processMessage(phoneNumber, message) in apps/backend/src/agent/engine.ts
+5. Engine retrieves/creates conversation context from SQLite (includes current
    state, user data)
-5. Check for 3-hour session timeout, reset to INIT if expired
-6. Call state machine: transition({ currentState, message, context })
-7. State machine returns: { nextState, commands, updatedContext }
-8. Update conversation state in database
-9. Execute commands sequentially:
-   - CHECK_FNB/CHECK_GASO → Call provider APIs
-     (apps/backend/src/services/providers.ts)
-   - SEND_MESSAGE → WhatsApp Meta Graph API
-     (apps/backend/src/services/whatsapp.ts)
-   - SEND_IMAGES → Upload images to WhatsApp, send media messages
-   - TRACK_EVENT → Log to analytics_events table
-   - NOTIFY_TEAM → Queue message in notifier service
-   - ESCALATE → Update conversation status to 'human_takeover'
-10. Response sent to user, conversation state persisted for next message
+6. Check for 3-hour session timeout, reset to INIT if expired
+7. Call state machine: transition({ currentState, message, context })
+8. State machine returns: { nextState, commands, updatedContext }
+9. Update conversation state in database
+10. Execute commands sequentially:
+
+- CHECK_FNB/CHECK_GASO → Call provider APIs
+  (apps/backend/src/services/providers.ts)
+- SEND_MESSAGE → WhatsApp Meta Graph API (apps/backend/src/services/whatsapp.ts)
+- SEND_IMAGES → Upload images to WhatsApp, send media messages
+- TRACK_EVENT → Log to analytics_events table
+- NOTIFY_TEAM → Queue message in notifier service
+- ESCALATE → Update conversation status to 'human_takeover'
+
+11. Response sent to user, conversation state persisted for next message
 
 WEBHOOK_ENDPOINTS:
 
-- POST /webhook: Receives incoming WhatsApp messages from Meta
-  - Extracts message text, phone number, sender info
+- POST /webhook: Frontend proxy at apps/frontend/src/routes/webhook/+server.ts
+  - Receives incoming WhatsApp messages from Meta
+  - Forwards to backend asynchronously, returns 200 immediately
+  - Backend extracts message text, phone number, sender info
   - Passes to processMessage() for handling
 - GET /webhook: Meta challenge verification
-  - Required for webhook setup
-  - Validates hub.verify_token and returns hub.challenge
+  - Frontend proxy forwards verification request to backend
+  - Backend validates hub.verify_token and returns hub.challenge
 
 LLM_INTEGRATION: Gemini via OpenAI client at apps/backend/src/services/llm.ts
 
