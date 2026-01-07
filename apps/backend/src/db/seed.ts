@@ -122,10 +122,10 @@ function seedPeriod(db: Database) {
   const periodName = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
 
   db.prepare(
-    `INSERT INTO catalog_periods (id, name, year_month, status, created_by) VALUES (?, ?, ?, 'draft', NULL)`,
+    `INSERT INTO catalog_periods (id, name, year_month, status, created_by) VALUES (?, ?, ?, 'active', NULL)`,
   ).run(`period-${yearMonth}`, periodName, yearMonth);
 
-  console.log(`Created draft catalog period: ${periodName}`);
+  console.log(`Created active catalog period: ${periodName}`);
 }
 
 function seedProducts(db: Database) {
