@@ -1,4 +1,3 @@
-/** Base product templates extracted from GASO catalog */
 export const BASE_PRODUCTS = [
   // Cocinas
   {
@@ -174,8 +173,16 @@ export const BASE_PRODUCTS = [
     name: 'Smart TV Samsung 65"',
     category: "tv",
     brand: "Samsung",
-    model: "UN65DU8000GXPE",
+    model: "UN65DU8000GXPE / UN65DU8200GXPE",
     specs: { size: '65"' },
+  },
+  {
+    id: "samsung_tv_70",
+    name: 'Smart TV Samsung 70"',
+    category: "tv",
+    brand: "Samsung",
+    model: "QN70Q65DAGXPE",
+    specs: { size: '70"', control_voz: true },
   },
   {
     id: "lg_tv_65",
@@ -225,7 +232,7 @@ export const BASE_PRODUCTS = [
     name: "Refrigeradora Mabe 511L",
     category: "refrigeradoras",
     brand: "Mabe",
-    model: null,
+    model: "MSD518LKRSS0",
     specs: { capacidad: "511L" },
   },
   {
@@ -233,7 +240,7 @@ export const BASE_PRODUCTS = [
     name: "Refrigeradora LG 509L",
     category: "refrigeradoras",
     brand: "LG",
-    model: null,
+    model: "GS51MPD",
     specs: { capacidad: "509L" },
   },
   {
@@ -241,8 +248,24 @@ export const BASE_PRODUCTS = [
     name: "Refrigeradora Indurama 508L",
     category: "refrigeradoras",
     brand: "Indurama",
-    model: null,
+    model: "RI-788DI",
     specs: { capacidad: "508L" },
+  },
+  {
+    id: "electrolux_refri_514l",
+    name: "Refrigerador Electrolux 514L",
+    category: "refrigeradoras",
+    brand: "Electrolux",
+    model: "ERSA53K2HVB",
+    specs: { capacidad: "514L" },
+  },
+  {
+    id: "lg_refri_314l",
+    name: "Refrigerador LG 314L",
+    category: "refrigeradoras",
+    brand: "LG",
+    model: "GT31WPP",
+    specs: { capacidad: "314L" },
   },
 
   // Lavadoras
@@ -275,8 +298,24 @@ export const BASE_PRODUCTS = [
     name: "Lavadora Mabe 22kg",
     category: "lavadoras",
     brand: "Mabe",
-    model: null,
+    model: "LMA722000WDBB2",
     specs: { capacidad: "22kg" },
+  },
+  {
+    id: "lg_lavadora_19kg",
+    name: "Lavadora LG 19kg",
+    category: "lavadoras",
+    brand: "LG",
+    model: "WT19BVTB",
+    specs: { capacidad: "19kg" },
+  },
+  {
+    id: "lavaseca_samsung",
+    name: "Lavaseca Samsung",
+    category: "lavadoras",
+    brand: "Samsung",
+    model: "WD11T4046BX",
+    specs: { lavado: "11kg", secado: "7kg" },
   },
   {
     id: "lg_lavadora_16kg",
@@ -291,7 +330,7 @@ export const BASE_PRODUCTS = [
     name: "Lavadora Samsung 13kg",
     category: "lavadoras",
     brand: "Samsung",
-    model: null,
+    model: "WA13CG5441BDPE",
     specs: { capacidad: "13kg" },
   },
   {
@@ -309,7 +348,7 @@ export const BASE_PRODUCTS = [
     name: "Torre de sonido Samsung",
     category: "audio",
     brand: "Samsung",
-    model: null,
+    model: "MX-T50/PE",
     specs: {},
   },
   {
@@ -317,7 +356,15 @@ export const BASE_PRODUCTS = [
     name: "Torre de sonido LG",
     category: "audio",
     brand: "LG",
-    model: null,
+    model: "RNC9",
+    specs: { microfono: true },
+  },
+  {
+    id: "samsung_barra_sonido",
+    name: "Barra de sonido Samsung",
+    category: "audio",
+    brand: "Samsung",
+    model: "HW-C400/PE",
     specs: {},
   },
 
@@ -337,6 +384,81 @@ export const BASE_PRODUCTS = [
     brand: null,
     model: null,
     specs: {},
+  },
+
+  {
+    id: "samsung_a36",
+    name: "Samsung Galaxy A36",
+    category: "celulares",
+    brand: "Samsung",
+    model: "A36",
+    specs: { storage: "128GB", ram: "6GB" },
+  },
+  {
+    id: "samsung_s22",
+    name: "Samsung Galaxy S22",
+    category: "celulares",
+    brand: "Samsung",
+    model: "S22",
+    specs: { storage: "128GB", ram: "8GB" },
+  },
+  {
+    id: "xiaomi_note_14_pro",
+    name: "Xiaomi Redmi Note 14 Pro",
+    category: "celulares",
+    brand: "Xiaomi",
+    model: "Redmi Note 14 Pro",
+    specs: { storage: "256GB", ram: "8GB" },
+  },
+  {
+    id: "iphone_13",
+    name: "iPhone 13",
+    category: "celulares",
+    brand: "Apple",
+    model: "iPhone 13",
+    specs: { storage: "128GB", ram: "4GB" },
+  },
+  {
+    id: "iphone_15",
+    name: "iPhone 15",
+    category: "celulares",
+    brand: "Apple",
+    model: "iPhone 15",
+    specs: { storage: "128GB", ram: "6GB" },
+  },
+  {
+    id: "iphone_16",
+    name: "iPhone 16",
+    category: "celulares",
+    brand: "Apple",
+    model: "iPhone 16",
+    specs: { storage: "128GB", ram: "8GB" },
+  },
+  {
+    id: "iphone_16_pro",
+    name: "iPhone 16 Pro",
+    category: "celulares",
+    brand: "Apple",
+    model: "iPhone 16 Pro",
+    specs: { storage: "256GB", ram: "8GB" },
+  },
+
+  // Laptops
+  {
+    id: "laptop_lenovo_i7",
+    name: "Laptop Lenovo i7",
+    category: "laptops",
+    brand: "Lenovo",
+    model: "IdeaPad Slim 5i",
+    specs: { processor: "i7" },
+  },
+  {
+    id: "laptop_acer_i5",
+    name: "Laptop Acer i5",
+    category: "laptops",
+    brand: "Acer",
+    model: "AL15-71P-53N7",
+    specs: { processor: "i5" },
   },
 ] as const;
 
