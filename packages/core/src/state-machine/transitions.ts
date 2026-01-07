@@ -575,7 +575,7 @@ function handleOfferProducts(message: string, context: any): StateOutput {
         {
           type: "SEND_MESSAGE",
           content:
-            "¿Qué producto te interesa? Tenemos celulares, cocinas, laptops, refrigeradoras, TVs y termas.",
+            "¿Qué producto te interesa? Tenemos celulares, cocinas, refrigeradoras, TVs y termas.",
         },
       ],
       updatedContext: {},
@@ -715,105 +715,29 @@ function handleOfferProducts(message: string, context: any): StateOutput {
     };
   }
 
-  // Priority 2: Use LLM-extracted category if available (handles brands automatically)
-  if (context.llmExtractedCategory) {
-    const offerVariants = S.OFFER_PRODUCTS(context.llmExtractedCategory);
-    const { message: offerMsg, updatedContext: offerVariantCtx } =
-      selectVariant(offerVariants, "OFFER_PRODUCTS", context);
+  // Priority 2: Use extracted category from backend (matcher or LLM)
+  if (context.extractedCategory) {
     return {
       nextState: "OFFER_PRODUCTS",
       commands: [
         {
-          type: "SEND_MESSAGE",
-          content: offerMsg,
-        },
-        {
           type: "SEND_IMAGES",
-          category: context.llmExtractedCategory,
+          category: context.extractedCategory,
           productIds: [],
         },
         {
           type: "TRACK_EVENT",
           eventType: "products_offered",
           metadata: {
-            category: context.llmExtractedCategory,
+            category: context.extractedCategory,
             segment: context.segment,
-            extractionMethod: "llm",
+            extractionMethod: context.usedLLM ? "llm" : "matcher",
           },
         },
       ],
       updatedContext: {
-        offeredCategory: context.llmExtractedCategory,
-        ...offerVariantCtx,
-      },
-    };
-  }
-
-  // Priority 3: Fallback to regex category extraction
-  const categoryMatch = lower.match(
-    /\b(celular|smartphone|iphone|redmi|samsung|xiaomi|cocina|laptop|notebook|computadora|refrigerad|refri|heladera|televi|tv|television|pantalla|terma|calentador|modelo|opcion)\w*/,
-  );
-
-  if (categoryMatch) {
-    let category = categoryMatch[0];
-
-    // Normalize brand names to category
-    if (
-      category.startsWith("iphone") ||
-      category.startsWith("redmi") ||
-      category.startsWith("samsung") ||
-      category.startsWith("xiaomi") ||
-      category.startsWith("celular") ||
-      category.startsWith("smartphone")
-    )
-      category = "celulares";
-    else if (category.startsWith("cocina")) category = "cocinas";
-    else if (
-      category.startsWith("laptop") ||
-      category.startsWith("notebook") ||
-      category.startsWith("computadora")
-    )
-      category = "laptops";
-    else if (category.startsWith("refri") || category.startsWith("heladera"))
-      category = "refrigeradoras";
-    else if (
-      category.startsWith("tv") ||
-      category.startsWith("televi") ||
-      category.startsWith("television") ||
-      category.startsWith("pantalla")
-    )
-      category = "televisores";
-    else if (category.startsWith("terma") || category.startsWith("calentador"))
-      category = "termas";
-    else if (category.startsWith("modelo") || category.startsWith("opcion"))
-      category = "all"; // Show all available products
-
-    const offerVariants = S.OFFER_PRODUCTS(category);
-    const { message: offerMsg, updatedContext: variantCtx } = selectVariant(
-      offerVariants,
-      "OFFER_PRODUCTS",
-      context,
-    );
-
-    return {
-      nextState: "OFFER_PRODUCTS", // Stay in this state, awaiting purchase confirmation
-      commands: [
-        { type: "SEND_MESSAGE", content: offerMsg },
-        { type: "SEND_IMAGES", productIds: [], category },
-        {
-          type: "TRACK_EVENT",
-          eventType: "products_offered",
-          metadata: { category, segment: context.segment },
-        },
-        {
-          type: "SEND_MESSAGE",
-          content: "¿Te gustaría llevarte alguno de estos productos?",
-        },
-      ],
-      updatedContext: {
-        offeredCategory: category,
-        lastInterestCategory: category,
-        ...variantCtx,
+        offeredCategory: context.extractedCategory,
+        lastInterestCategory: context.extractedCategory,
       },
     };
   }

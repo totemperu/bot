@@ -92,13 +92,14 @@ describe("Backend Pre-Processing Pattern", () => {
   });
 
   describe("LLM Category Extraction Flow", () => {
-    test("should use llmExtractedCategory when available (Priority 2)", () => {
+    test("should use extractedCategory when available (Priority 2)", () => {
       const context: StateContext = {
         phoneNumber: "51987654321",
         segment: "fnb",
         creditLine: 5000,
-        // Backend extracted category via LLM (handles brand→category automatically)
-        llmExtractedCategory: "celulares",
+        // Backend extracted category via matcher or LLM
+        extractedCategory: "celulares",
+        usedLLM: true,
       };
 
       const result = transition({
@@ -118,29 +119,32 @@ describe("Backend Pre-Processing Pattern", () => {
       }
     });
 
-    test("should fall back to regex when llmExtractedCategory not available", () => {
+    test("should ask for clarification when no extractedCategory", () => {
       const context: StateContext = {
         phoneNumber: "51987654321",
         segment: "gaso",
         creditLine: 2500,
-        // No LLM extraction available
+        // No extraction available
       };
 
       const result = transition({
         currentState: "OFFER_PRODUCTS",
-        message: "cocinas",
+        message: "algo",
         context,
       });
 
       expect(result.nextState).toBe("OFFER_PRODUCTS");
-      expect(result.updatedContext.offeredCategory).toBe("cocinas");
+      // Should ask for clarification
+      expect(result.commands.some((c) => c.type === "SEND_MESSAGE")).toBe(true);
     });
 
-    test("should handle brand names via regex when LLM unavailable", () => {
+    test("should use extractedCategory from matcher (fast path)", () => {
       const context: StateContext = {
         phoneNumber: "51987654321",
         segment: "fnb",
         creditLine: 4000,
+        extractedCategory: "celulares",
+        usedLLM: false, // Matcher found it
       };
 
       const result = transition({
@@ -149,8 +153,11 @@ describe("Backend Pre-Processing Pattern", () => {
         context,
       });
 
-      // Regex should map Samsung → celulares
       expect(result.updatedContext.offeredCategory).toBe("celulares");
+      const trackEvent = result.commands.find((c) => c.type === "TRACK_EVENT");
+      if (trackEvent?.type === "TRACK_EVENT") {
+        expect(trackEvent.metadata?.extractionMethod).toBe("matcher");
+      }
     });
   });
 
@@ -256,7 +263,7 @@ describe("Priority System Verification", () => {
       llmGeneratedAnswer: "Tenemos iPhone, Samsung, Xiaomi y más.",
       llmRequiresHuman: false,
       // Category also available (Priority 2)
-      llmExtractedCategory: "celulares",
+      extractedCategory: "celulares",
     };
 
     const result = transition({
@@ -273,13 +280,14 @@ describe("Priority System Verification", () => {
     expect(result.commands.some((c) => c.type === "SEND_IMAGES")).toBe(false);
   });
 
-  test("Priority 2: LLM category extraction should override regex", () => {
+  test("Priority 2: Extracted category should be used", () => {
     const context: StateContext = {
       phoneNumber: "51987654321",
       segment: "fnb",
       creditLine: 3000,
-      // LLM extracted category (Priority 2)
-      llmExtractedCategory: "televisores",
+      // Extracted category (from matcher or LLM)
+      extractedCategory: "tv",
+      usedLLM: false,
     };
 
     const result = transition({
@@ -288,31 +296,32 @@ describe("Priority System Verification", () => {
       context,
     });
 
-    // Should use LLM extraction
-    expect(result.updatedContext.offeredCategory).toBe("televisores");
+    // Should use extracted category
+    expect(result.updatedContext.offeredCategory).toBe("tv");
 
     const trackEvent = result.commands.find((c) => c.type === "TRACK_EVENT");
     if (trackEvent?.type === "TRACK_EVENT") {
-      expect(trackEvent.metadata?.extractionMethod).toBe("llm");
+      expect(trackEvent.metadata?.extractionMethod).toBe("matcher");
     }
   });
 
-  test("Priority 3: Regex fallback when no LLM enrichment", () => {
+  test("Should ask for clarification when no extraction available", () => {
     const context: StateContext = {
       phoneNumber: "51987654321",
       segment: "gaso",
       creditLine: 2000,
-      // No LLM enrichment
+      // No extraction
     };
 
     const result = transition({
       currentState: "OFFER_PRODUCTS",
-      message: "notebook",
+      message: "algo",
       context,
     });
 
-    // Should use regex
-    expect(result.updatedContext.offeredCategory).toBe("laptops");
+    // Should ask for clarification
+    expect(result.nextState).toBe("OFFER_PRODUCTS");
+    expect(result.commands.some((c) => c.type === "SEND_MESSAGE")).toBe(true);
   });
 });
 
@@ -341,13 +350,13 @@ describe("Edge Cases with LLM Integration", () => {
     }
   });
 
-  test("should handle purchase confirmation even if LLM extracts category", () => {
+  test("should handle purchase confirmation even if extraction available", () => {
     const context: StateContext = {
       phoneNumber: "51987654321",
       segment: "fnb",
       creditLine: 5000,
       offeredCategory: "celulares",
-      llmExtractedCategory: "celulares", // LLM also extracted it
+      extractedCategory: "celulares", // Matcher or LLM extracted it
     };
 
     const result = transition({

@@ -26,16 +26,10 @@ export const THERMA_ALTERNATIVE = [
   `Otra opción: combos con terma. ¿Te llama más la atención?`,
 ];
 
-export const OFFER_PRODUCTS = (category: string) => [
-  `Perfecto, aquí están nuestras mejores opciones en ${category}:`,
-  `Dale, te muestro lo mejor en ${category}:`,
-  `Mira estas opciones en ${category}:`,
-];
-
 export const ASK_PRODUCT_INTEREST = [
-  `¿Qué producto te gustaría conocer? Tenemos celulares, cocinas, laptops, refrigeradoras, televisores y más.`,
-  `¿Qué te llama la atención? Celulares, laptops, TVs, cocinas, refrigeradoras...`,
-  `¿En qué producto estás pensando? Tenemos celulares, laptops, electrodomésticos...`,
+  `¿Qué producto te gustaría conocer? Tenemos celulares, cocinas, refrigeradoras, televisores, termas y más.`,
+  `¿Qué te llama la atención? Celulares, TVs, cocinas, refrigeradoras, termas...`,
+  `¿En qué producto estás pensando? Tenemos celulares, electrodomésticos...`,
 ];
 
 export const CONFIRM_PURCHASE = [

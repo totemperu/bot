@@ -27,10 +27,12 @@ export type StateContext = {
   sessionStartedAt?: string;
   waitingMessageCount?: number;
   purchaseConfirmed?: boolean;
+  // Backend enrichment flags
   llmDetectedQuestion?: boolean;
   llmGeneratedAnswer?: string;
   llmRequiresHuman?: boolean;
-  llmExtractedCategory?: string;
+  extractedCategory?: string; // Category extracted by backend (matcher or LLM)
+  usedLLM?: boolean; // Whether LLM was used for extraction
   llmObjectionIntensity?: "mild" | "strong";
   // Variation tracking to prevent repetition
   usedVariantKeys?: Record<string, number>;

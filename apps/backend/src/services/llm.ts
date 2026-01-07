@@ -163,3 +163,53 @@ JSON: {"answer": "tu respuesta corta y natural", "requiresHuman": true|false}`,
     };
   }
 }
+
+export async function suggestAlternative(
+  requestedCategory: string,
+  availableCategories: string[],
+): Promise<string> {
+  try {
+    const completion = await client.chat.completions.create({
+      model: MODEL,
+      messages: [
+        {
+          role: "system",
+          content: `${SALES_CONTEXT}
+
+El cliente pidió "${requestedCategory}" pero no tenemos disponibilidad.
+
+CATEGORÍAS DISPONIBLES:
+${availableCategories.map((c) => `- ${c}`).join("\n")}
+
+Sugiere una alternativa relevante de las categorías disponibles de forma natural y amigable.
+Si ninguna es relevante, ofrece ver todas las opciones.
+
+TONO: Natural, proactivo, como un amigo que quiere ayudar.
+FORMATO: Corto (1-2 líneas máximo). Reconoce lo que pidió, sugiere alternativa.
+
+Ejemplo 1: "No tenemos laptops ahora, pero nuestros celulares de alta gama podrían interesarte para trabajar. ¿Los vemos?"
+Ejemplo 2: "No hay cámaras en este momento, pero los celulares tienen cámaras excelentes. ¿Te muestro?"
+
+JSON: {"suggestion": "tu sugerencia natural"}`,
+        },
+        {
+          role: "user",
+          content: `Cliente pidió: ${requestedCategory}. Categorías disponibles: ${availableCategories.join(", ")}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.8,
+    });
+
+    const choice = completion.choices[0];
+    const content = choice?.message.content;
+    const res = JSON.parse(content || "{}");
+
+    return (
+      res.suggestion ||
+      `No tenemos ${requestedCategory} ahora. ¿Te gustaría ver ${availableCategories[0] || "otras opciones"}?`
+    );
+  } catch {
+    return `No tenemos ${requestedCategory} disponible ahorita. ¿Te interesa algo más?`;
+  }
+}

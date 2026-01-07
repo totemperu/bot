@@ -10,3 +10,4 @@ export * from "./templates/sales.ts";
 export * from "./messaging/variation-selector.ts";
 export * from "./messaging/context-analyzer.ts";
 export * from "./messaging/tone-detector.ts";
+export * from "./matching/category-matcher.ts";

@@ -1,5 +1,68 @@
 import type { StockStatus } from "./index.ts";
 
+/** Product category configuration */
+export type CategoryConfig = {
+  key: string;
+  display: string;
+  aliases: string[];
+  brands: string[];
+};
+
+/** Canonical product categories */
+export const CATEGORIES = {
+  celulares: {
+    key: "celulares",
+    display: "Celulares",
+    aliases: ["celular", "smartphone", "celu", "telefono", "phone", "movil"],
+    brands: ["iphone", "samsung", "xiaomi", "redmi", "motorola"],
+  },
+  cocinas: {
+    key: "cocinas",
+    display: "Cocinas",
+    aliases: ["cocina", "cocineta"],
+    brands: [],
+  },
+  tv: {
+    key: "tv",
+    display: "Televisores",
+    aliases: [
+      "televisor",
+      "televisores",
+      "television",
+      "tele",
+      "pantalla",
+      "smart tv",
+    ],
+    brands: ["lg", "samsung", "sony", "hisense", "jvc"],
+  },
+  refrigeradoras: {
+    key: "refrigeradoras",
+    display: "Refrigeradoras",
+    aliases: ["refrigeradora", "refri", "refrigerador", "heladera"],
+    brands: ["lg", "samsung", "mabe"],
+  },
+  lavadoras: {
+    key: "lavadoras",
+    display: "Lavadoras",
+    aliases: ["lavadora", "lava"],
+    brands: ["lg", "samsung", "mabe"],
+  },
+  termas: {
+    key: "termas",
+    display: "Termas",
+    aliases: ["terma", "calentador", "calentadora"],
+    brands: [],
+  },
+  fusion: {
+    key: "fusion",
+    display: "Combos",
+    aliases: ["combo", "combos", "paquete", "bundle"],
+    brands: [],
+  },
+} as const satisfies Record<string, CategoryConfig>;
+
+export type CategoryKey = keyof typeof CATEGORIES;
+
 /** Base product template (segment-agnostic inventory) */
 export type Product = {
   id: string;

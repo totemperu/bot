@@ -208,6 +208,7 @@ describe("Human-like Conversational Quality", () => {
           segment: "fnb",
           creditLine: 5000,
           age: 35,
+          extractedCategory: "celulares", // Backend extracted first mention
         },
       });
 

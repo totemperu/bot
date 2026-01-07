@@ -14,7 +14,10 @@ export type {
   InstallmentSchedule,
   Bundle,
   FnbOffering,
+  CategoryConfig,
+  CategoryKey,
 } from "./catalog.ts";
+export { CATEGORIES } from "./catalog.ts";
 
 export type ConversationState =
   | "INIT"

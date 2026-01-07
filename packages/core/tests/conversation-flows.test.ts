@@ -69,7 +69,10 @@ describe("End-to-End Conversation Flows", () => {
       const result = transition({
         currentState: "OFFER_PRODUCTS",
         message: "Me interesan los celulares",
-        context,
+        context: {
+          ...context,
+          extractedCategory: "celulares", // Backend would extract this
+        },
       });
 
       expect(result.nextState).toBe("OFFER_PRODUCTS");
@@ -86,7 +89,10 @@ describe("End-to-End Conversation Flows", () => {
       const result = transition({
         currentState: "OFFER_PRODUCTS",
         message: "Sí, me lo llevo",
-        context,
+        context: {
+          ...context,
+          offeredCategory: "celulares", // Products were shown
+        },
       });
 
       expect(result.nextState).toBe("CLOSING");
@@ -442,7 +448,10 @@ describe("End-to-End Conversation Flows", () => {
       const result = transition({
         currentState: "OFFER_PRODUCTS",
         message: "Quiero un iPhone",
-        context,
+        context: {
+          ...context,
+          extractedCategory: "celulares", // Backend matcher extracts this
+        },
       });
 
       expect(result.updatedContext.offeredCategory).toBe("celulares");
@@ -452,20 +461,25 @@ describe("End-to-End Conversation Flows", () => {
       const result = transition({
         currentState: "OFFER_PRODUCTS",
         message: "Samsung Galaxy",
-        context,
+        context: {
+          ...context,
+          extractedCategory: "celulares", // Backend matcher extracts this
+        },
       });
 
       expect(result.updatedContext.offeredCategory).toBe("celulares");
     });
 
-    test("Notebook should map to laptops", () => {
+    test("Laptop should ask for clarification (not in catalog)", () => {
       const result = transition({
         currentState: "OFFER_PRODUCTS",
         message: "notebook",
-        context,
+        context, // No extractedCategory - not in our catalog
       });
 
-      expect(result.updatedContext.offeredCategory).toBe("laptops");
+      // Should ask for clarification
+      expect(result.nextState).toBe("OFFER_PRODUCTS");
+      expect(result.commands.some((c) => c.type === "SEND_MESSAGE")).toBe(true);
     });
   });
 });
@@ -489,11 +503,12 @@ describe("Command generation validation", () => {
   test("SEND_IMAGES should include category", () => {
     const result = transition({
       currentState: "OFFER_PRODUCTS",
-      message: "cocina",
+      message: "cocinas",
       context: {
         phoneNumber: "51987654321",
         segment: "fnb",
         creditLine: 3000,
+        extractedCategory: "cocinas", // Backend extracted this
       },
     });
 

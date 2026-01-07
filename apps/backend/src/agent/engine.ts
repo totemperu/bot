@@ -90,18 +90,30 @@ async function executeTransition(
   }
 
   // 2. Extract product category (in OFFER_PRODUCTS state)
-  if (state === "OFFER_PRODUCTS" && !context.offeredCategory) {
-    // Get available categories from database for this segment
-    const availableCategories =
-      context.segment === "fnb"
-        ? FnbOfferingService.getAvailableCategories()
-        : BundleService.getAvailableCategories();
+  if (state === "OFFER_PRODUCTS") {
+    // Fast path: Try category matcher first (90% of cases)
+    const { matchCategory } = await import("@totem/core");
+    const matchedCategory = matchCategory(message);
 
-    const category = await LLM.extractEntity(message, "product_category", {
-      availableCategories,
-    });
-    if (category) {
-      context.llmExtractedCategory = category;
+    if (matchedCategory) {
+      // Quick match via aliases/brands
+      context.extractedCategory = matchedCategory;
+      context.usedLLM = false;
+    } else {
+      // No quick match - use LLM for ambiguous cases
+      const availableCategories =
+        context.segment === "fnb"
+          ? FnbOfferingService.getAvailableCategories()
+          : BundleService.getAvailableCategories();
+
+      const category = await LLM.extractEntity(message, "product_category", {
+        availableCategories,
+      });
+
+      if (category) {
+        context.extractedCategory = category;
+        context.usedLLM = true;
+      }
     }
   }
 
@@ -367,7 +379,7 @@ async function handleSendImages(
     }).slice(0, 3);
 
     if (bundles.length === 0) {
-      await sendNoStockMessage(conv, context);
+      await handleNoStock(conv, category, context);
       return;
     }
 
@@ -397,6 +409,20 @@ async function handleSendImages(
         );
       }
     }
+
+    // Send follow-up question after showing products
+    const followUp = "¿Te gustaría llevarte alguno de estos?";
+    if (isSimulation) {
+      WhatsAppService.logMessage(
+        phoneNumber,
+        "outbound",
+        "text",
+        followUp,
+        "sent",
+      );
+    } else {
+      await WhatsAppService.sendMessage(phoneNumber, followUp);
+    }
   } else {
     // FNB segment - individual offerings
     const offerings = FnbOfferingService.getAvailable({
@@ -405,7 +431,7 @@ async function handleSendImages(
     }).slice(0, 3);
 
     if (offerings.length === 0) {
-      await sendNoStockMessage(conv, context);
+      await handleNoStock(conv, category, context);
       return;
     }
 
@@ -429,32 +455,65 @@ async function handleSendImages(
         );
       }
     }
+
+    // Send follow-up question after showing products
+    const followUp = "¿Alguno te interesa?";
+    if (isSimulation) {
+      WhatsAppService.logMessage(
+        phoneNumber,
+        "outbound",
+        "text",
+        followUp,
+        "sent",
+      );
+    } else {
+      await WhatsAppService.sendMessage(phoneNumber, followUp);
+    }
   }
 }
 
-async function sendNoStockMessage(
+async function handleNoStock(
   conv: Conversation,
+  requestedCategory: string,
   context: StateContext,
 ): Promise<void> {
   const phoneNumber = conv.phone_number;
   const isSimulation = conv.is_simulation === 1;
 
-  const { message: noStockMsg, updatedContext: variantCtx } = selectVariant(
-    T.NO_STOCK,
-    "NO_STOCK",
-    context,
-  );
-  updateConversationState(phoneNumber, conv.current_state, variantCtx);
+  let responseMessage: string;
+
+  // If we used LLM to extract the category, use LLM for smart alternative
+  if (context.usedLLM) {
+    const segment = context.segment || "fnb";
+    const availableCategories =
+      segment === "fnb"
+        ? FnbOfferingService.getAvailableCategories()
+        : BundleService.getAvailableCategories();
+
+    responseMessage = await LLM.suggestAlternative(
+      requestedCategory,
+      availableCategories,
+    );
+  } else {
+    // Quick match but no stock - use template
+    const { message: noStockMsg, updatedContext: variantCtx } = selectVariant(
+      T.NO_STOCK,
+      "NO_STOCK",
+      context,
+    );
+    responseMessage = noStockMsg;
+    updateConversationState(phoneNumber, conv.current_state, variantCtx);
+  }
 
   if (isSimulation) {
     WhatsAppService.logMessage(
       phoneNumber,
       "outbound",
       "text",
-      noStockMsg,
+      responseMessage,
       "sent",
     );
   } else {
-    await WhatsAppService.sendMessage(phoneNumber, noStockMsg);
+    await WhatsAppService.sendMessage(phoneNumber, responseMessage);
   }
 }
