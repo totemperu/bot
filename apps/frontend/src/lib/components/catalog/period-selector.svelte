@@ -21,19 +21,6 @@ function getStatusLabel(status: string): string {
       return status;
   }
 }
-
-function getStatusColor(status: string): string {
-  switch (status) {
-    case "draft":
-      return "text-amber-600";
-    case "active":
-      return "text-green-600";
-    case "archived":
-      return "text-ink-400";
-    default:
-      return "text-ink-600";
-  }
-}
 </script>
 
 <div class="relative">
@@ -51,15 +38,4 @@ function getStatusColor(status: string): string {
       </option>
     {/each}
   </select>
-  <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-    <svg class="w-4 h-4 text-ink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-    </svg>
-  </div>
 </div>
-
-{#if selected}
-  <span class="text-xs {getStatusColor(selected.status)} ml-2">
-    {getStatusLabel(selected.status)}
-  </span>
-{/if}
