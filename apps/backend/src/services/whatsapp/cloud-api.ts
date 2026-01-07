@@ -1,9 +1,26 @@
 import process from "node:process";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { WhatsAppAdapter } from "./types.ts";
 
 const TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_ID = process.env.WHATSAPP_PHONE_ID;
-const PUBLIC_URL = process.env.PUBLIC_URL || "http://localhost:3000";
+
+function getPublicUrl(): string {
+  const tunnelFile = resolve(import.meta.dir, "../../../../.cloudflare-url");
+  if (existsSync(tunnelFile)) {
+    const url = readFileSync(tunnelFile, "utf-8").trim();
+    if (url) {
+      console.log(`[WhatsApp] Using tunnel URL from .cloudflare-url: ${url}`);
+      return url;
+    }
+  }
+  const fallback = process.env.PUBLIC_URL || "http://localhost:3000";
+  console.log(`[WhatsApp] Using fallback URL: ${fallback}`);
+  return fallback;
+}
+
+const PUBLIC_URL = getPublicUrl();
 const API_URL = `https://graph.facebook.com/v17.0/${PHONE_ID}/messages`;
 
 export const CloudApiAdapter: WhatsAppAdapter = {

@@ -1,7 +1,23 @@
 import process from "node:process";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { Message } from "whatsapp-web.js";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+function getBackendUrl(): string {
+  const tunnelFile = resolve(import.meta.dir, "../../.cloudflare-url");
+  if (existsSync(tunnelFile)) {
+    const url = readFileSync(tunnelFile, "utf-8").trim();
+    if (url) {
+      console.log(`[notifier] Using tunnel URL from .cloudflare-url: ${url}`);
+      return url;
+    }
+  }
+  const fallback = process.env.BACKEND_URL || "http://localhost:3000";
+  console.log(`[notifier] Using fallback URL: ${fallback}`);
+  return fallback;
+}
+
+const BACKEND_URL = getBackendUrl();
 
 // Deduplication cache for WhatsApp Web JS (can fire duplicate events)
 const forwardedMessages = new Set<string>();
