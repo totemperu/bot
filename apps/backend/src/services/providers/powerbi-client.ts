@@ -112,7 +112,7 @@ async function queryField(
   }
 
   const data = (await res.json()) as PowerBIResponse;
-  
+
   try {
     const val =
       data.results?.[0]?.result?.data?.dsr?.DS?.[0]?.PH?.[0]?.DM0?.[0]?.M0;

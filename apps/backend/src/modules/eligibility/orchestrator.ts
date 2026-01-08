@@ -21,8 +21,13 @@ export async function checkEligibilityWithFallback(
   console.log(`[Orchestrator] Not found in FNB, trying GASO for DNI ${dni}`);
   const gasoResult = await checkGASO(dni, phoneNumber);
 
-  if (gasoResult.reason === "provider_unavailable" && health.isAvailable("fnb")) {
-    console.log(`[Orchestrator] GASO unavailable, using FNB fallback for DNI ${dni}`);
+  if (
+    gasoResult.reason === "provider_unavailable" &&
+    health.isAvailable("fnb")
+  ) {
+    console.log(
+      `[Orchestrator] GASO unavailable, using FNB fallback for DNI ${dni}`,
+    );
     return fnbResult;
   }
 

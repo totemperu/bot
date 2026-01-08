@@ -80,7 +80,7 @@ async function authenticate(): Promise<FNBSession> {
 
 async function queryCreditLine(dni: string): Promise<FNBCreditResponse> {
   const session = await authenticate();
-  
+
   const params = new URLSearchParams({
     numeroDocumento: dni,
     tipoDocumento: "PE2",
@@ -89,7 +89,7 @@ async function queryCreditLine(dni: string): Promise<FNBCreditResponse> {
   });
 
   const url = `${process.env.CALIDDA_BASE_URL}/FNB_Services/api/financiamiento/lineaCredito?${params}`;
-  
+
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${session.token}`,

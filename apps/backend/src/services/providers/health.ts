@@ -28,13 +28,15 @@ class ProviderHealthService {
   markBlocked(provider: ProviderName, errorMsg: string): void {
     const health = this.providers.get(provider)!;
     const wasHealthy = health.status === "healthy";
-    
+
     health.status = "blocked";
     health.lastError = errorMsg;
     health.blockedUntil = new Date(Date.now() + BLOCK_DURATION_MS);
 
     if (wasHealthy) {
-      console.error(`[${provider.toUpperCase()}] BLOCKED for 30min - ${errorMsg}`);
+      console.error(
+        `[${provider.toUpperCase()}] BLOCKED for 30min - ${errorMsg}`,
+      );
     }
   }
 

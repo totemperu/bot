@@ -13,5 +13,8 @@ export function run(
   params: unknown[] = [],
 ): { changes: number; lastInsertRowid: number } {
   const info = db.prepare(sql).run(...params);
-  return { changes: info.changes, lastInsertRowid: Number(info.lastInsertRowid) };
+  return {
+    changes: info.changes,
+    lastInsertRowid: Number(info.lastInsertRowid),
+  };
 }
