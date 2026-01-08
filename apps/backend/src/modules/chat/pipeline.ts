@@ -9,7 +9,7 @@ import {
   resetSession,
 } from "./context.ts";
 import { isMaintenanceMode } from "../settings/system.ts";
-import * as LLM from "../../services/llm.ts";
+import * as LLM from "../llm/index.ts";
 import { BundleService } from "../../services/catalog/index.ts";
 
 const MAINTENANCE_MESSAGE =

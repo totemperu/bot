@@ -1,5 +1,3 @@
-import OpenAI from "openai";
-import process from "node:process";
 import {
   buildIsQuestionPrompt,
   buildExtractCategoryPrompt,
@@ -9,13 +7,7 @@ import {
   buildHandleBacklogPrompt,
   getCategoryMetadata,
 } from "@totem/core";
-
-const client = new OpenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-});
-
-const MODEL = "gemini-2.5-flash-lite";
+import { client, MODEL } from "./client.ts";
 
 export async function isQuestion(message: string): Promise<boolean> {
   try {

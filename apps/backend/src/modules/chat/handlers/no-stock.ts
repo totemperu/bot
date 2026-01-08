@@ -5,7 +5,7 @@ import { WhatsAppService } from "../../../services/whatsapp/index.ts";
 import { updateConversationState } from "../context.ts";
 import { selectVariant } from "@totem/core";
 import * as T from "@totem/core";
-import * as LLM from "../../../services/llm.ts";
+import * as LLM from "../../llm/index.ts";
 
 export async function handleNoStock(
   conv: Conversation,

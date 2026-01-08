@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, setDefaultTimeout } from "bun:test";
-import * as LLM from "../src/services/llm.ts";
+import * as LLM from "../src/modules/llm/index.ts";
 
 setDefaultTimeout(30000);
 
