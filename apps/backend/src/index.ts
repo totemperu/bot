@@ -46,7 +46,7 @@ import catalog from "./routes/catalog.ts";
 import periods from "./routes/periods.ts";
 import orders from "./routes/orders.ts";
 
-import { health } from "./services/providers/health.ts";
+import { getAllStatus } from "./services/providers/health.ts";
 import { ReportService } from "./services/reports.ts";
 import { checkNotifierHealth } from "./services/notifier.ts";
 import { checkAndReassignTimeouts } from "./modules/conversation/assignment.ts";
@@ -87,7 +87,7 @@ app.use(
 
 // Public routes
 app.get("/health", async (c) => {
-  const providers = health.getAllStatus();
+  const providers = getAllStatus();
   const notifier = await checkNotifierHealth();
 
   const allHealthy =
@@ -289,7 +289,7 @@ app.get("/api/providers/:dni", requireAuth, async (c) => {
 
   try {
     const result = await checkEligibilityWithFallback(dni);
-    const healthStatus = health.getAllStatus();
+    const healthStatus = getAllStatus();
 
     return c.json({
       dni,

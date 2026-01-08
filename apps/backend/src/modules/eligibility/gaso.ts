@@ -1,6 +1,6 @@
 import type { ProviderCheckResult } from "@totem/types";
 import { PowerBIClient } from "../../services/providers/powerbi-client.ts";
-import { health } from "../../services/providers/health.ts";
+import { isAvailable, markBlocked } from "../../services/providers/health.ts";
 import { PersonasService } from "../../services/personas.ts";
 import { isProviderForcedDown } from "../settings/system.ts";
 import { getSimulationPersona } from "./shared.ts";
@@ -34,7 +34,7 @@ export async function checkGASO(
     return { eligible: false, credit: 0, reason: "provider_forced_down" };
   }
 
-  if (!health.isAvailable("powerbi")) {
+  if (!isAvailable("powerbi")) {
     console.log(`[GASO] PowerBI unavailable, using fallback for DNI ${dni}`);
     return { eligible: false, credit: 0, reason: "provider_unavailable" };
   }
@@ -69,7 +69,7 @@ export async function checkGASO(
     if (error instanceof Error) {
       const msg = error.message.toLowerCase();
       if (msg.includes("auth") || msg.includes("401") || msg.includes("403")) {
-        health.markBlocked("powerbi", error.message);
+        markBlocked("powerbi", error.message);
       }
     }
 

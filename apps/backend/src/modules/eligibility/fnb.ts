@@ -1,6 +1,6 @@
 import type { ProviderCheckResult } from "@totem/types";
 import { FNBClient } from "../../services/providers/fnb-client.ts";
-import { health } from "../../services/providers/health.ts";
+import { isAvailable, markBlocked } from "../../services/providers/health.ts";
 import { PersonasService } from "../../services/personas.ts";
 import { isProviderForcedDown } from "../settings/system.ts";
 import { getSimulationPersona } from "./shared.ts";
@@ -22,7 +22,7 @@ export async function checkFNB(
     return { eligible: false, credit: 0, reason: "provider_forced_down" };
   }
 
-  if (!health.isAvailable("fnb")) {
+  if (!isAvailable("fnb")) {
     console.log(`[FNB] Provider unavailable for DNI ${dni}`);
     return { eligible: false, credit: 0, reason: "provider_unavailable" };
   }
@@ -53,7 +53,7 @@ export async function checkFNB(
         msg.includes("403") ||
         msg.includes("bloqueado")
       ) {
-        health.markBlocked("fnb", error.message);
+        markBlocked("fnb", error.message);
       }
     }
 

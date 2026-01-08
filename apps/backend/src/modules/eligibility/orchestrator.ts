@@ -1,7 +1,7 @@
 import type { ProviderCheckResult } from "@totem/types";
 import { checkFNB } from "./fnb.ts";
 import { checkGASO } from "./gaso.ts";
-import { health } from "../../services/providers/health.ts";
+import { isAvailable } from "../../services/providers/health.ts";
 
 export async function checkEligibilityWithFallback(
   dni: string,
@@ -21,10 +21,7 @@ export async function checkEligibilityWithFallback(
   console.log(`[Orchestrator] Not found in FNB, trying GASO for DNI ${dni}`);
   const gasoResult = await checkGASO(dni, phoneNumber);
 
-  if (
-    gasoResult.reason === "provider_unavailable" &&
-    health.isAvailable("fnb")
-  ) {
+  if (gasoResult.reason === "provider_unavailable" && isAvailable("fnb")) {
     console.log(
       `[Orchestrator] GASO unavailable, using FNB fallback for DNI ${dni}`,
     );

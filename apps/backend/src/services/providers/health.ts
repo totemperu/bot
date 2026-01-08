@@ -8,62 +8,58 @@ type HealthStatus = {
 
 const BLOCK_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 
-class ProviderHealthService {
-  private providers: Map<ProviderName, HealthStatus> = new Map([
-    ["fnb", { status: "healthy", lastError: null, blockedUntil: null }],
-    ["gaso", { status: "healthy", lastError: null, blockedUntil: null }],
-    ["powerbi", { status: "healthy", lastError: null, blockedUntil: null }],
-  ]);
+const providers: Map<ProviderName, HealthStatus> = new Map([
+  ["fnb", { status: "healthy", lastError: null, blockedUntil: null }],
+  ["gaso", { status: "healthy", lastError: null, blockedUntil: null }],
+  ["powerbi", { status: "healthy", lastError: null, blockedUntil: null }],
+]);
 
-  isAvailable(provider: ProviderName): boolean {
-    const health = this.providers.get(provider)!;
-    if (health.status === "healthy") return true;
-    if (health.blockedUntil && new Date() > health.blockedUntil) {
-      this.markHealthy(provider);
-      return true;
-    }
-    return false;
+export function isAvailable(provider: ProviderName): boolean {
+  const health = providers.get(provider)!;
+  if (health.status === "healthy") return true;
+  if (health.blockedUntil && new Date() > health.blockedUntil) {
+    markHealthy(provider);
+    return true;
   }
+  return false;
+}
 
-  markBlocked(provider: ProviderName, errorMsg: string): void {
-    const health = this.providers.get(provider)!;
-    const wasHealthy = health.status === "healthy";
+export function markBlocked(provider: ProviderName, errorMsg: string): void {
+  const health = providers.get(provider)!;
+  const wasHealthy = health.status === "healthy";
 
-    health.status = "blocked";
-    health.lastError = errorMsg;
-    health.blockedUntil = new Date(Date.now() + BLOCK_DURATION_MS);
+  health.status = "blocked";
+  health.lastError = errorMsg;
+  health.blockedUntil = new Date(Date.now() + BLOCK_DURATION_MS);
 
-    if (wasHealthy) {
-      console.error(
-        `[${provider.toUpperCase()}] BLOCKED for 30min - ${errorMsg}`,
-      );
-    }
-  }
-
-  markHealthy(provider: ProviderName): void {
-    const health = this.providers.get(provider)!;
-    health.status = "healthy";
-    health.lastError = null;
-    health.blockedUntil = null;
-  }
-
-  getStatus(provider: ProviderName) {
-    const health = this.providers.get(provider)!;
-    return {
-      status: health.status,
-      available: this.isAvailable(provider),
-      lastError: health.lastError,
-      blockedUntil: health.blockedUntil?.toISOString() || null,
-    };
-  }
-
-  getAllStatus() {
-    return {
-      fnb: this.getStatus("fnb"),
-      gaso: this.getStatus("gaso"),
-      powerbi: this.getStatus("powerbi"),
-    };
+  if (wasHealthy) {
+    console.error(
+      `[${provider.toUpperCase()}] BLOCKED for 30min - ${errorMsg}`,
+    );
   }
 }
 
-export const health = new ProviderHealthService();
+export function markHealthy(provider: ProviderName): void {
+  const health = providers.get(provider)!;
+  health.status = "healthy";
+  health.lastError = null;
+  health.blockedUntil = null;
+}
+
+export function getStatus(provider: ProviderName) {
+  const health = providers.get(provider)!;
+  return {
+    status: health.status,
+    available: isAvailable(provider),
+    lastError: health.lastError,
+    blockedUntil: health.blockedUntil?.toISOString() || null,
+  };
+}
+
+export function getAllStatus() {
+  return {
+    fnb: getStatus("fnb"),
+    gaso: getStatus("gaso"),
+    powerbi: getStatus("powerbi"),
+  };
+}
