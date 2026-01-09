@@ -8,7 +8,7 @@ export function formatCategoryList(categoryKeys: string[]): string {
   const displayNames = categoryKeys
     .map((key) => {
       const config = CATEGORIES[key as keyof typeof CATEGORIES];
-      return config?.display || key;
+      return config?.display.toLowerCase() || key;
     })
     .filter(Boolean);
 
@@ -32,7 +32,7 @@ export function getCategoryDisplayNames(categoryKeys: string[]): string[] {
   return categoryKeys
     .map((key) => {
       const config = CATEGORIES[key as keyof typeof CATEGORIES];
-      return config?.display || key;
+      return config?.display.toLowerCase() || key;
     })
     .filter(Boolean);
 }
