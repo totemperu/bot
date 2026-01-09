@@ -66,6 +66,8 @@ export function transitionCheckingEligibility(
       const segment = enrichment.segment;
       const credit = enrichment.credit || 0;
       const name = formatFirstName(enrichment.name || "");
+      const affordableCategories = enrichment.affordableCategories || [];
+      const categoryDisplayNames = enrichment.categoryDisplayNames || [];
 
       // For FNB, check business rules
       if (segment === "fnb") {
@@ -90,8 +92,13 @@ export function transitionCheckingEligibility(
           };
         }
 
-        // FNB approved
-        const variants = S.FNB_APPROVED(name, credit);
+        // FNB approved, show message with affordable products
+        const productList =
+          categoryDisplayNames.length > 0
+            ? categoryDisplayNames.join(", ")
+            : "nuestros productos disponibles";
+
+        const variants = S.FNB_APPROVED(name, credit, productList);
         const { message } = selectVariant(variants, "FNB_APPROVED", {});
 
         return {
@@ -101,6 +108,8 @@ export function transitionCheckingEligibility(
             segment: "fnb",
             credit,
             name,
+            availableCategories: affordableCategories,
+            categoryDisplayNames,
           },
           commands: [
             {
@@ -124,6 +133,9 @@ export function transitionCheckingEligibility(
             phase: "collecting_age",
             dni: phase.dni,
             name,
+            credit,
+            affordableCategories,
+            categoryDisplayNames,
           },
           commands: message.map((text) => ({
             type: "SEND_MESSAGE" as const,
