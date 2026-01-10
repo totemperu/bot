@@ -20,6 +20,30 @@ export type ConversationPhase =
       name: string;
       availableCategories?: string[];
       categoryDisplayNames?: string[];
+      lastShownCategory?: string;
+      sentProducts?: Array<{
+        name: string;
+        position: number;
+        productId?: string;
+        price?: number;
+      }>;
+      interestedProduct?: {
+        name: string;
+        price: number;
+        productId: string;
+        exploredCategoriesCount: number;
+      };
+    }
+  | {
+      phase: "confirming_selection";
+      segment: Segment;
+      credit: number;
+      name: string;
+      selectedProduct: {
+        name: string;
+        price: number;
+        productId: string;
+      };
     }
   | {
       phase: "handling_objection";
@@ -27,6 +51,12 @@ export type ConversationPhase =
       credit: number;
       name: string;
       objectionCount: number;
+      sentProducts?: Array<{
+        name: string;
+        position: number;
+        productId?: string;
+        price?: number;
+      }>;
     }
   | {
       phase: "closing";

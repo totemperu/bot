@@ -1,18 +1,12 @@
-/**
- * The main sales phase handles:
- * - Category extraction (via regex or LLM)
- * - Question detection and answering
- * - Product selection
- * - Purchase confirmation
- */
-
 import type {
   ConversationPhase,
   TransitionResult,
   EnrichmentResult,
+  Command,
 } from "../types.ts";
 import { selectVariant } from "../../messaging/variation-selector.ts";
 import { matchCategory } from "../../matching/category-matcher.ts";
+import { matchAllProducts } from "../../matching/product-selection.ts";
 import * as S from "../../templates/sales.ts";
 
 type OfferingProductsPhase = Extract<
@@ -28,47 +22,227 @@ export function transitionOfferingProducts(
 ): TransitionResult {
   const lower = message.toLowerCase();
 
-  // Handle enrichment results first
   if (enrichment) {
     return handleEnrichmentResult(phase, message, enrichment);
   }
 
-  // Try regex-based category matching first (no LLM needed)
-  const matchedCategory = matchCategory(message);
-  if (matchedCategory) {
+  // If we have sent products, check for product match first (even without explicit interest phrase)
+  // After showing products and asking "¿Alguno te interesa?", any mention is implicit interest
+  if (phase.sentProducts && phase.sentProducts.length > 0) {
+    console.log(
+      `[OfferingProducts] Checking message "${message}" against ${phase.sentProducts.length} sent products`,
+    );
+    const allMatches = matchAllProducts(message, phase.sentProducts);
+
+    if (allMatches.length === 1) {
+      // Unique match, transition to confirmation gate
+      const selected = allMatches[0];
+      if (selected) {
+        console.log(`[OfferingProducts] Unique match found:`, selected.name);
+        const priceText = selected.price
+          ? ` (S/ ${selected.price.toFixed(2)})`
+          : "";
+
+        // Check if this is re-selecting the interested product or new selection
+        const isReselection =
+          phase.interestedProduct &&
+          phase.interestedProduct.productId === selected.productId;
+
+        const confirmationText = isReselection
+          ? `Perfecto ${phase.name} 😊\n\nRetomemos: ${selected.name}${priceText}\n\n¿Confirmas tu elección?`
+          : `Perfecto ${phase.name} 😊\n\nHas elegido: ${selected.name}${priceText}\n\n¿Confirmas tu elección?`;
+
+        return {
+          type: "update",
+          nextPhase: {
+            phase: "confirming_selection",
+            segment: phase.segment,
+            credit: phase.credit,
+            name: phase.name,
+            selectedProduct: {
+              name: selected.name,
+              price: selected.price || 0,
+              productId: selected.productId || "",
+            },
+          },
+          commands: [
+            {
+              type: "SEND_MESSAGE",
+              text: confirmationText,
+            },
+            {
+              type: "TRACK_EVENT",
+              event: "product_selected",
+              metadata: {
+                segment: phase.segment,
+                productId: selected.productId,
+                productName: selected.name,
+                price: selected.price,
+              },
+            },
+            {
+              type: "NOTIFY_TEAM",
+              channel: "agent",
+              message: `Cliente seleccionó: ${selected.name}${priceText} - esperando confirmación`,
+            },
+          ],
+        };
+      }
+    }
+
+    if (allMatches.length > 1) {
+      // Ambiguous, ask for clarification
+      console.log(
+        `[OfferingProducts] Multiple matches (${allMatches.length}), asking for clarification:`,
+        allMatches.map((p) => p.name),
+      );
+      const options = allMatches
+        .map((p, idx) => {
+          const priceText = p.price ? ` - S/ ${p.price.toFixed(2)}` : "";
+          return `${idx + 1}. ${p.name}${priceText}`;
+        })
+        .join("\n");
+
+      return {
+        type: "update",
+        nextPhase: phase,
+        commands: [
+          {
+            type: "SEND_MESSAGE",
+            text: `Tenemos varios modelos que coinciden. ¿Cuál te interesa?\n\n${options}`,
+          },
+        ],
+      };
+    }
+
+    // No matches found in sent products, continue with normal flow below
+    console.log(
+      `[OfferingProducts] No product matches found, continuing to normal flow`,
+    );
+  }
+
+  // If user expresses interest without context (no sentProducts), ask what they want to see
+  if (isProductSelection(lower)) {
+    const categoryDisplayNames = phase.categoryDisplayNames || [];
+    const productList =
+      categoryDisplayNames.length > 0
+        ? categoryDisplayNames.join(", ")
+        : "nuestros productos disponibles";
+
     return {
       type: "update",
-      nextPhase: phase, // Stay in offering_products
+      nextPhase: phase,
       commands: [
         {
-          type: "TRACK_EVENT",
-          event: "category_selected",
-          metadata: { category: matchedCategory, method: "regex" },
+          type: "SEND_MESSAGE",
+          text: `¿Qué producto te interesa? Tenemos: ${productList}`,
         },
-        { type: "SEND_IMAGES", category: matchedCategory },
       ],
     };
   }
 
-  // Check for purchase confirmation signals
-  if (isPurchaseConfirmation(lower)) {
-    const variants = S.CONFIRM_PURCHASE(phase.name || "");
-    const { message } = selectVariant(variants, "CONFIRM_PURCHASE", {});
+  // Check for category matching
+  const matchedCategory = matchCategory(message);
+  if (matchedCategory) {
+    // If same category, ask which specific product
+    if (phase.lastShownCategory === matchedCategory) {
+      return {
+        type: "update",
+        nextPhase: phase,
+        commands: [
+          {
+            type: "SEND_MESSAGE",
+            text: "¿Cuál de los productos te interesa? Puedes decir 'el primero', 'el segundo', etc.",
+          },
+        ],
+      };
+    }
+
+    // Different category, allow switch
+    const exploredCount = phase.interestedProduct
+      ? phase.interestedProduct.exploredCategoriesCount + 1
+      : 0;
+
+    const updatedPhase = {
+      ...phase,
+      lastShownCategory: matchedCategory,
+      interestedProduct: phase.interestedProduct
+        ? {
+            ...phase.interestedProduct,
+            exploredCategoriesCount: exploredCount,
+          }
+        : undefined,
+    };
+
+    const commands: Command[] = [
+      {
+        type: "TRACK_EVENT",
+        event: "category_selected",
+        metadata: {
+          category: matchedCategory,
+          method: "regex",
+          previousCategory: phase.lastShownCategory,
+          exploredCount,
+        },
+      },
+      { type: "SEND_IMAGES", category: matchedCategory },
+    ];
+
+    // Send reminder after viewing 2 different categories
+    if (exploredCount === 2 && phase.interestedProduct) {
+      const priceText = ` (S/ ${phase.interestedProduct.price.toFixed(2)})`;
+      commands.push({
+        type: "SEND_MESSAGE",
+        text: `Por cierto ${phase.name}, recuerda que te interesaba el ${phase.interestedProduct.name}${priceText}. ¿Quieres confirmarlo?`,
+      });
+    }
 
     return {
       type: "update",
-      nextPhase: { phase: "closing", purchaseConfirmed: true },
+      nextPhase: updatedPhase,
+      commands,
+    };
+  }
+
+  // Check for "show me other products" patterns
+  if (isRequestingOtherOptions(lower)) {
+    const categoryDisplayNames = phase.categoryDisplayNames || [];
+    const productList =
+      categoryDisplayNames.length > 0
+        ? categoryDisplayNames.join(", ")
+        : "nuestros productos disponibles";
+
+    const { message: messages } = selectVariant(
+      S.ASK_PRODUCT_INTEREST(productList),
+      "ASK_PRODUCT_INTEREST",
+      {},
+    );
+
+    return {
+      type: "update",
+      nextPhase: phase,
+      commands: messages.map((text) => ({
+        type: "SEND_MESSAGE" as const,
+        text,
+      })),
+    };
+  }
+
+  // Generic confirmations without product context - ask what they want
+  if (isPurchaseConfirmation(lower)) {
+    const categoryDisplayNames = phase.categoryDisplayNames || [];
+    const productList =
+      categoryDisplayNames.length > 0
+        ? categoryDisplayNames.join(", ")
+        : "nuestros productos disponibles";
+
+    return {
+      type: "update",
+      nextPhase: phase,
       commands: [
         {
-          type: "TRACK_EVENT",
-          event: "purchase_confirmed",
-          metadata: { segment: phase.segment },
-        },
-        ...message.map((text) => ({ type: "SEND_MESSAGE" as const, text })),
-        {
-          type: "NOTIFY_TEAM",
-          channel: "agent",
-          message: `Cliente confirmó interés de compra`,
+          type: "SEND_MESSAGE",
+          text: `¡Perfecto! ¿Qué te gustaría ver? Tenemos: ${productList}`,
         },
       ],
     };
@@ -196,17 +370,62 @@ function handleEnrichmentResult(
 
   // Category extracted
   if (enrichment.type === "category_extracted" && enrichment.category) {
+    // If LLM extracted same category we already showed, ask which product
+    if (phase.lastShownCategory === enrichment.category) {
+      return {
+        type: "update",
+        nextPhase: phase,
+        commands: [
+          {
+            type: "SEND_MESSAGE",
+            text: "¿Cuál de los productos te interesa? Puedes decir 'el primero', 'el segundo', etc.",
+          },
+        ],
+      };
+    }
+
+    // Different category, show new products
+    const exploredCount = phase.interestedProduct
+      ? phase.interestedProduct.exploredCategoriesCount + 1
+      : 0;
+
+    const updatedPhase = {
+      ...phase,
+      lastShownCategory: enrichment.category,
+      interestedProduct: phase.interestedProduct
+        ? {
+            ...phase.interestedProduct,
+            exploredCategoriesCount: exploredCount,
+          }
+        : undefined,
+    };
+
+    const commands: Command[] = [
+      {
+        type: "TRACK_EVENT",
+        event: "category_selected",
+        metadata: {
+          category: enrichment.category,
+          method: "llm",
+          exploredCount,
+        },
+      },
+      { type: "SEND_IMAGES", category: enrichment.category },
+    ];
+
+    // Send reminder after viewing 2 different categories
+    if (exploredCount === 2 && phase.interestedProduct) {
+      const priceText = ` (S/ ${phase.interestedProduct.price.toFixed(2)})`;
+      commands.push({
+        type: "SEND_MESSAGE",
+        text: `Por cierto ${phase.name}, recuerda que te interesaba el ${phase.interestedProduct.name}${priceText}. ¿Quieres confirmarlo?`,
+      });
+    }
+
     return {
       type: "update",
-      nextPhase: phase, // Stay in offering_products
-      commands: [
-        {
-          type: "TRACK_EVENT",
-          event: "category_selected",
-          metadata: { category: enrichment.category, method: "llm" },
-        },
-        { type: "SEND_IMAGES", category: enrichment.category },
-      ],
+      nextPhase: updatedPhase,
+      commands,
     };
   }
 
@@ -233,9 +452,32 @@ function handleEnrichmentResult(
   };
 }
 
+function isProductSelection(lower: string): boolean {
+  // Detect when user expresses interest in a specific product
+  // Examples: "me interesa el samsung", "quiero el primero", "me llama la atención"
+  const hasInterestPhrase =
+    /(me\s+(interesa|gusta|llama\s+la\s+atenci[oó]n|parece\s+bien|convence)|quiero|quisiera|prefiero|elijo)/.test(
+      lower,
+    );
+  const hasSpecifier =
+    /(el|la|los|las)\s+(primer|segund|tercer|cuart|samsung|galaxy|lg|mabe|iphone|huawei|xiaomi|motorola|\w+\s+(pulgadas?|gb|inch))/.test(
+      lower,
+    );
+
+  return hasInterestPhrase && hasSpecifier;
+}
+
+function isRequestingOtherOptions(lower: string): boolean {
+  return /(otros?|otras?|m[aá]s\s+(opciones?|productos?)|algo\s+m[aá]s|qu[eé]\s+m[aá]s\s+tienes?)/.test(
+    lower,
+  );
+}
+
 function isPurchaseConfirmation(lower: string): boolean {
+  // Only match generic confirmations, NOT specific product interest
+  // "me interesa el samsung" should be handled by isProductSelection
   return (
-    /(quiero|me\s+interesa|lo\s+quiero|s[ií]\s*,?\s*(quiero|me\s+interesa)|confirmo|listo|dale|va)/.test(
+    /(^|\s)(s[ií]|confirmo|listo|dale|va|quiero\s+comprar)($|\s|,)/.test(
       lower,
     ) && !/(no\s+quiero|no\s+me\s+interesa)/.test(lower)
   );
