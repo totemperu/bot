@@ -2,11 +2,13 @@ import {
   getReadyForAggregation,
   markAsProcessing,
   markAsProcessed,
-  markAsFailed,
   countPending,
   countFailed,
 } from "./message-inbox.ts";
 import { handleMessage } from "./handler/index.ts";
+import { createLogger } from "../lib/logger.ts";
+
+const logger = createLogger("aggregator");
 
 // Time window for possible new messages before processing
 const QUIET_WINDOW_MS = 2000;
@@ -17,12 +19,12 @@ let workerPromise: Promise<void> | null = null;
 
 export function startAggregatorWorker(): void {
   if (isRunning) {
-    console.log("[Aggregator] Worker already running");
+    logger.debug("Worker already running");
     return;
   }
 
   isRunning = true;
-  console.log("[Aggregator] Starting worker...");
+  logger.info("Aggregator worker started");
 
   workerPromise = runWorkerLoop();
 }
@@ -32,14 +34,13 @@ export async function stopAggregatorWorker(): Promise<void> {
     return;
   }
 
-  console.log("[Aggregator] Stopping worker...");
   isRunning = false;
 
   if (workerPromise) {
     await workerPromise;
   }
 
-  console.log("[Aggregator] Worker stopped");
+  logger.info("Aggregator worker stopped");
 }
 
 async function runWorkerLoop(): Promise<void> {
@@ -47,10 +48,9 @@ async function runWorkerLoop(): Promise<void> {
     try {
       await processReadyMessages();
     } catch (error) {
-      console.error("[Aggregator] Error in worker loop:", error);
+      logger.error({ error }, "Aggregator loop failed");
     }
 
-    // Sleep before next poll
     await sleep(POLL_INTERVAL_MS);
   }
 }
@@ -62,9 +62,7 @@ async function processReadyMessages(): Promise<void> {
     return;
   }
 
-  console.log(
-    `[Aggregator] Processing ${readyGroups.length} ready message groups`,
-  );
+  logger.debug({ count: readyGroups.length }, "Processing message groups");
 
   await Promise.all(readyGroups.map((group) => processGroup(group)));
 }
@@ -80,11 +78,11 @@ async function processGroup(group: {
     // Mark as processing to prevent double-processing
     markAsProcessing(group.ids);
 
-    console.log(
-      `[Aggregator] Processing group for ${group.phone_number}: ${group.ids}`,
+    logger.debug(
+      { phoneNumber: group.phone_number, ids: group.ids },
+      "Processing group",
     );
 
-    // Process conversation
     await handleMessage({
       phoneNumber: group.phone_number,
       content: group.aggregated_text,
@@ -92,23 +90,12 @@ async function processGroup(group: {
       messageId: group.latest_message_id,
     });
 
-    // Mark as successfully processed
     markAsProcessed(group.ids);
-
-    console.log(
-      `[Aggregator] Successfully processed group for ${group.phone_number}`,
-    );
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-
-    console.error(
-      `[Aggregator] Failed to process group for ${group.phone_number}:`,
-      error,
+    logger.error(
+      { error, phoneNumber: group.phone_number },
+      "Group processing failed",
     );
-
-    // Mark as failed for retry later
-    markAsFailed(group.ids, errorMessage);
   }
 }
 

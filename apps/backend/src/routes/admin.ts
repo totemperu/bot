@@ -7,6 +7,9 @@ import {
   countHeldMessages,
 } from "../conversation/index.ts";
 import type { User } from "@totem/types";
+import { createLogger } from "../lib/logger.ts";
+
+const logger = createLogger("admin");
 
 const admin = new Hono();
 
@@ -283,8 +286,9 @@ admin.post("/process-held-messages", async (c) => {
     });
   }
 
-  console.log(
-    `[Admin] ${user.username} triggered processing of ${pendingCount} held messages`,
+  logger.info(
+    { username: user.username, pendingCount },
+    "Admin triggered held messages processing",
   );
 
   const result = await processHeldMessages();

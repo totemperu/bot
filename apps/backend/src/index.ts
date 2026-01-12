@@ -4,22 +4,25 @@ import { cors } from "hono/cors";
 import process from "node:process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { createLogger } from "./lib/logger.ts";
 import {
   startAggregatorWorker,
   stopAggregatorWorker,
 } from "./conversation/aggregator-worker.ts";
+
+const logger = createLogger("app");
 
 function getFrontendUrl(): string {
   const tunnelFile = resolve(import.meta.dir, "../../../.cloudflare-url");
   if (existsSync(tunnelFile)) {
     const url = readFileSync(tunnelFile, "utf-8").trim();
     if (url) {
-      console.log(`[backend] Using tunnel URL from .cloudflare-url: ${url}`);
+      logger.debug({ url, source: "tunnel" }, "Frontend URL configured");
       return url;
     }
   }
   const fallback = process.env.FRONTEND_URL || "http://localhost:5173";
-  console.log(`[backend] Using fallback URL: ${fallback}`);
+  logger.debug({ url: fallback, source: "env" }, "Frontend URL configured");
   return fallback;
 }
 
@@ -311,16 +314,14 @@ app.onError(errorHandler);
 const port = parseInt(process.env.PORT || "3000", 10);
 
 process.on("SIGINT", async () => {
-  console.log("\nShutting down gracefully...");
+  logger.info("Shutting down (SIGINT)");
   await stopAggregatorWorker();
-  console.log("Shutdown complete");
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
-  console.log("\nShutting down gracefully...");
+  logger.info("Shutting down (SIGTERM)");
   await stopAggregatorWorker();
-  console.log("Shutdown complete");
   process.exit(0);
 });
 

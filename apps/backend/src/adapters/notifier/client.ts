@@ -1,4 +1,7 @@
 import process from "node:process";
+import { createLogger } from "../../lib/logger.ts";
+
+const logger = createLogger("notifier");
 
 const NOTIFIER_URL = process.env.NOTIFIER_URL || "http://localhost:3001";
 
@@ -20,7 +23,7 @@ export async function notifyTeam(
 
     return response.ok;
   } catch (error) {
-    console.error("Notifier service error:", error);
+    logger.error({ error, channel }, "Notifier service error");
     return false;
   }
 }

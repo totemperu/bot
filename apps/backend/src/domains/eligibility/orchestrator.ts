@@ -2,6 +2,9 @@ import type { ProviderCheckResult } from "@totem/types";
 import { checkFNB } from "./fnb.ts";
 import { checkGASO } from "./gaso.ts";
 import { notifyTeam } from "../../adapters/notifier/client.ts";
+import { createLogger } from "../../lib/logger.ts";
+
+const logger = createLogger("eligibility");
 
 type ProviderResult = {
   success: boolean;
@@ -58,18 +61,22 @@ export async function checkEligibilityWithFallback(
 
     // Check FNB first (premium segment priority)
     if (fnbResult.eligible) {
-      console.log(`[Orchestrator] Customer eligible via FNB: ${dni}`);
+      logger.info(
+        { dni, segment: "fnb", credit: fnbResult.credit },
+        "Eligible via FNB",
+      );
       return fnbResult;
     }
 
     // FNB not eligible, try GASO
     if (gasoResult.eligible) {
-      console.log(`[Orchestrator] Customer eligible via GASO: ${dni}`);
+      logger.info(
+        { dni, segment: "gaso", credit: gasoResult.credit },
+        "Eligible via GASO",
+      );
       return gasoResult;
     }
 
-    // Neither eligible
-    console.log(`[Orchestrator] Customer not eligible in any segment: ${dni}`);
     return { eligible: false, credit: 0, reason: "not_qualified" };
   }
 
@@ -79,16 +86,14 @@ export async function checkEligibilityWithFallback(
 
     const fnbResult = results.fnb.result!;
     if (fnbResult.eligible) {
-      console.log(
-        `[Orchestrator] Customer eligible via FNB (PowerBI degraded): ${dni}`,
+      logger.warn(
+        { dni, segment: "fnb", credit: fnbResult.credit, degraded: "powerbi" },
+        "Eligible (PowerBI degraded)",
       );
       return fnbResult;
     }
 
-    // FNB says not found, customer likely is not a Calidda customer
-    console.log(
-      `[Orchestrator] FNB returned not found (PowerBI unavailable): ${dni}`,
-    );
+    // FNB says not found
     return { eligible: false, credit: 0, reason: "not_qualified" };
   }
 
@@ -102,22 +107,18 @@ export async function checkEligibilityWithFallback(
 
     const gasoResult = results.powerbi.result!;
     if (gasoResult.eligible) {
-      console.log(
-        `[Orchestrator] Customer eligible via PowerBI (FNB degraded): ${dni}`,
+      logger.warn(
+        { dni, segment: "gaso", eligible: true, degraded: "fnb" },
+        "Customer eligible via PowerBI (FNB degraded)",
       );
       return gasoResult;
     }
 
-    console.log(
-      `[Orchestrator] Customer not eligible (FNB unavailable): ${dni}`,
-    );
-    return { eligible: false, credit: 0, reason: "not_qualified" };
+    return { eligible: false, credit: 0 };
   }
 
-  // If both providers fail, we escalate
-  console.error(
-    `[Orchestrator] CRITICAL: Both providers failed for DNI ${dni}`,
-  );
+  // Both failed
+  logger.error({ dni, errors: results.errors }, "Both providers failed");
 
   await escalateToHuman(
     `URGENTE: Ambos proveedores caídos. Cliente esperando: DNI ${dni}${phoneNumber ? `, WhatsApp ${phoneNumber}` : ""}`,
@@ -137,13 +138,13 @@ function silentlyNotifyDev(
   dni: string,
   errors: string[],
 ): void {
-  console.warn(`[Orchestrator] ${message} for DNI ${dni}`);
+  logger.warn({ dni, errors }, message);
 
   notifyTeam(
     "dev",
     `${message}\nDNI: ${dni}\nErrors: ${errors.join(", ")}`,
   ).catch((error) => {
-    console.error("[Orchestrator] Failed to notify dev:", error);
+    logger.error({ error }, "Notify dev failed");
   });
 }
 
@@ -151,7 +152,6 @@ async function escalateToHuman(message: string): Promise<void> {
   try {
     await notifyTeam("agent", message);
   } catch (error) {
-    console.error("[Orchestrator] Failed to escalate to human:", error);
-    await notifyTeam("dev", `Escalation failed: ${message}`).catch(() => {});
+    logger.error({ error, message }, "Escalation failed");
   }
 }

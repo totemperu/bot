@@ -8,7 +8,6 @@ const IS_DEV = process.env.NODE_ENV === "development";
 
 function getAdapter(): WhatsAppAdapter {
   if (IS_DEV) {
-    console.log("[WhatsApp] Dev mode: using whatsapp-web.js via notifier");
     return DevAdapter;
   }
   return CloudApiAdapter;

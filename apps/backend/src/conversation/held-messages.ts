@@ -1,5 +1,8 @@
 import { db } from "../db/index.ts";
 import { getAll } from "../db/query.ts";
+import { createLogger } from "../lib/logger.ts";
+
+const logger = createLogger("held-messages");
 
 type AggregatedHeldGroup = {
   phone_number: string;
@@ -24,9 +27,7 @@ export function holdMessage(
      VALUES (?, ?, ?, ?)`,
   ).run(phoneNumber, text, messageId, whatsappTimestamp);
 
-  console.log(
-    `[HeldMessages] Stored message from ${phoneNumber} during maintenance`,
-  );
+  logger.debug({ phoneNumber, messageId, whatsappTimestamp }, "Message held");
 }
 
 /**
@@ -58,7 +59,7 @@ export function clearHeldMessages(ids: number[]): void {
     ...ids,
   );
 
-  console.log(`[HeldMessages] Cleared ${ids.length} processed messages`);
+  logger.debug({ count: ids.length }, "Cleared held messages");
 }
 
 /**

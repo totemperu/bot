@@ -1,4 +1,7 @@
 import { db } from "../../db/index.ts";
+import { createLogger } from "../../lib/logger.ts";
+
+const logger = createLogger("assignment");
 
 type Agent = {
   id: string;
@@ -19,7 +22,7 @@ export async function assignNextAgent(
     .all() as Agent[];
 
   if (agents.length === 0) {
-    console.warn("No available agents for assignment");
+    logger.warn("No available agents");
     return null;
   }
 
@@ -43,7 +46,10 @@ export async function assignNextAgent(
   const assignedAgent = agents[currentIndex];
 
   if (!assignedAgent) {
-    console.warn("Failed to get agent from index");
+    logger.warn(
+      { currentIndex, agentCount: agents.length },
+      "Failed to get agent from index",
+    );
     return null;
   }
 
@@ -91,7 +97,7 @@ async function sendAssignmentNotification(
       }),
     });
   } catch (error) {
-    console.error("Failed to notify agent:", error);
+    logger.error({ error, agentPhone, clientPhone }, "Failed to notify agent");
   }
 }
 
@@ -114,8 +120,9 @@ export function checkAndReassignTimeouts(): void {
   }>;
 
   for (const conv of timedOutConversations) {
-    console.log(
-      `Reassigning timed-out conversation: ${conv.phone_number} (was assigned to ${conv.assigned_agent})`,
+    logger.info(
+      { phoneNumber: conv.phone_number, previousAgent: conv.assigned_agent },
+      "Reassigning timed-out conversation",
     );
 
     db.prepare(

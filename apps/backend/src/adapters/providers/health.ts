@@ -1,3 +1,7 @@
+import { createLogger } from "../../lib/logger.ts";
+
+const logger = createLogger("providers");
+
 type ProviderName = "fnb" | "gaso" | "powerbi";
 
 type HealthStatus = {
@@ -33,8 +37,9 @@ export function markBlocked(provider: ProviderName, errorMsg: string): void {
   health.blockedUntil = new Date(Date.now() + BLOCK_DURATION_MS);
 
   if (wasHealthy) {
-    console.error(
-      `[${provider.toUpperCase()}] BLOCKED for 30min - ${errorMsg}`,
+    logger.error(
+      { provider, errorMsg, blockedUntil: health.blockedUntil },
+      "Provider blocked for 30 minutes",
     );
   }
 }

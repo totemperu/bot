@@ -3,14 +3,12 @@ import {
   getAggregatedHeldMessages,
 } from "./held-messages.ts";
 import { handleMessage } from "./handler/index.ts";
+import { createLogger } from "../lib/logger.ts";
+
+const logger = createLogger("held-messages");
 
 /**
  * Process all held messages from maintenance mode
- *
- * Groups messages by user and aggregates them
- * to ensure the state machine processes all user context at once.
- *
- * @returns Number of users processed
  */
 export async function processHeldMessages(): Promise<{
   usersProcessed: number;
@@ -20,11 +18,13 @@ export async function processHeldMessages(): Promise<{
   const aggregatedGroups = getAggregatedHeldMessages();
 
   if (aggregatedGroups.length === 0) {
+    logger.debug("No held messages");
     return { usersProcessed: 0, messagesProcessed: 0, errors: 0 };
   }
 
-  console.log(
-    `[HeldMessages] Processing ${aggregatedGroups.length} users with held messages`,
+  logger.debug(
+    { count: aggregatedGroups.length },
+    "Processing held messages from users",
   );
 
   const processedIds: number[] = [];
@@ -32,11 +32,11 @@ export async function processHeldMessages(): Promise<{
 
   for (const group of aggregatedGroups) {
     try {
-      console.log(
-        `[HeldMessages] Processing ${group.message_count} messages for ${group.phone_number}`,
+      logger.debug(
+        { phoneNumber: group.phone_number, count: group.message_count },
+        "Processing held messages for user",
       );
 
-      // Process all messages for this user at once
       await handleMessage({
         phoneNumber: group.phone_number,
         content: group.aggregated_text,
@@ -47,11 +47,15 @@ export async function processHeldMessages(): Promise<{
       // Track IDs for cleanup
       const ids = group.message_ids.split(",").map((id) => parseInt(id, 10));
       processedIds.push(...ids);
+      logger.debug(
+        { phoneNumber: group.phone_number, messageIds: ids },
+        "Processed held messages for user",
+      );
     } catch (error) {
       errorCount++;
-      console.error(
-        `[HeldMessages] Failed to process messages for ${group.phone_number}:`,
-        error,
+      logger.error(
+        { error, phoneNumber: group.phone_number },
+        "Failed to process held messages for user",
       );
       // Continue with next user, don't mark failed ones as processed
     }
@@ -68,7 +72,7 @@ export async function processHeldMessages(): Promise<{
     errors: errorCount,
   };
 
-  console.log(`[HeldMessages] Completed:`, result);
+  logger.debug(result, "Held messages processed");
 
   return result;
 }

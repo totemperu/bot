@@ -22,6 +22,9 @@ import { classifyLLMError } from "./types.ts";
 import { logLLMError } from "./error-logger.ts";
 import { BundleService } from "../../domains/catalog/bundles.ts";
 import { CATEGORIES } from "@totem/types";
+import { createLogger } from "../../lib/logger.ts";
+
+const logger = createLogger("llm");
 
 type AnswerContext = {
   segment?: string;
@@ -66,10 +69,6 @@ export async function answerQuestionFocused(
   try {
     // Classify question
     const questionType = await classifyQuestion(message, phoneNumber);
-
-    console.log(
-      `[LLM] Question type: ${questionType} for message: "${message}"`,
-    );
 
     // Retrieve context and generate answer based on type
     switch (questionType) {
@@ -120,7 +119,7 @@ export async function answerQuestionFocused(
         return await answerWithPrompt(message, buildGeneralPrompt(context));
     }
   } catch (error) {
-    console.error("[LLM] Question answering failed:", error);
+    logger.error({ error, phoneNumber }, "Question answering failed");
     logLLMError(
       phoneNumber,
       "answerQuestionFocused",
@@ -160,7 +159,7 @@ async function answerProductQuestion(
       buildProductAnswerPrompt(products, detectedCategory),
     );
   } catch (error) {
-    console.error("[LLM] Product question failed:", error);
+    logger.error({ error }, "Product question failed");
     return "Déjame revisar qué productos tenemos disponibles para ti.";
   }
 }
