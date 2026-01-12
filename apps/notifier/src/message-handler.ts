@@ -24,6 +24,9 @@ async function handleMessage(msg: Message) {
   // Ignore system messages
   if (msg.from === "0@c.us") return;
 
+  // Ignore status updates
+  if (msg.from === "status@broadcast") return;
+
   // Ignore empty messages
   const hasContent = msg.body && msg.body.trim().length > 0;
   if (!hasContent && !isGroupMessage) return;
