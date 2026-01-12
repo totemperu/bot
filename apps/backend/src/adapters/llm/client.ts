@@ -5,8 +5,7 @@ import { createLogger } from "../../lib/logger.ts";
 const logger = createLogger("llm");
 
 export const client = new OpenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export const MODEL = "gemini-2.5-flash-lite";
