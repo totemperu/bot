@@ -2,6 +2,7 @@ import process from "node:process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Message } from "whatsapp-web.js";
+import { parseIncomingMessage } from "./adapters/webjs-parser.ts";
 import { createLogger } from "./logger.ts";
 
 const logger = createLogger("forwarder");
@@ -40,23 +41,9 @@ export async function forwardToBackend(msg: Message): Promise<void> {
   setTimeout(() => {
     forwardedMessages.delete(messageId);
   }, FORWARD_CACHE_TTL_MS);
-  // Extract phone number - handle both @c.us and @lid formats
-  let phoneNumber = msg.from.replace("@c.us", "").replace("@lid", "");
 
-  // For @lid format, try to get the actual phone number from contact
-  if (msg.from.endsWith("@lid")) {
-    try {
-      const contact = await msg.getContact();
-      if (contact.number) {
-        phoneNumber = contact.number;
-      }
-    } catch (e) {
-      logger.warn({ lid: msg.from }, "LID resolution failed");
-    }
-  }
-
-  // Map whatsapp-web.js message types to Cloud API format
-  const messageType = msg.type === "chat" ? "text" : msg.type;
+  // Parse message using our standardized parser
+  const incomingMessage = await parseIncomingMessage(msg);
 
   // Build payload matching WhatsApp Cloud API webhook format
   const payload = {
@@ -67,11 +54,20 @@ export async function forwardToBackend(msg: Message): Promise<void> {
             value: {
               messages: [
                 {
-                  from: phoneNumber,
-                  id: msg.id._serialized,
-                  timestamp: msg.timestamp,
-                  type: messageType,
-                  text: msg.type === "chat" ? { body: msg.body } : undefined,
+                  from: incomingMessage.from,
+                  id: incomingMessage.id,
+                  timestamp: Math.floor(incomingMessage.timestamp / 1000), // Convert back to seconds for Cloud API format
+                  type:
+                    incomingMessage.type === "text"
+                      ? "text"
+                      : incomingMessage.type,
+                  text:
+                    incomingMessage.type === "text"
+                      ? { body: incomingMessage.body }
+                      : undefined,
+                  context: incomingMessage.quotedContext
+                    ? { id: incomingMessage.quotedContext.id }
+                    : undefined,
                 },
               ],
             },
@@ -95,12 +91,15 @@ export async function forwardToBackend(msg: Message): Promise<void> {
           status: response.status,
           error: errorText,
           messageId,
-          phoneNumber,
+          from: incomingMessage.from,
         },
         "Backend rejected message",
       );
     }
   } catch (error) {
-    logger.error({ error, messageId, phoneNumber }, "Forward failed");
+    logger.error(
+      { error, messageId, from: incomingMessage.from },
+      "Forward failed",
+    );
   }
 }

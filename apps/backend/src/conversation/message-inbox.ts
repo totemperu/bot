@@ -1,5 +1,6 @@
 import { db } from "../db/index.ts";
 import { getAll } from "../db/query.ts";
+import type { IncomingMessage } from "@totem/types";
 
 type InboxMessage = {
   id: number;
@@ -21,20 +22,26 @@ type AggregatedGroup = {
   aggregated_text: string;
   oldest_timestamp: number;
   latest_message_id: string;
+  quoted_message_context: string | null;
 };
 
-export function storeIncomingMessage(
-  phoneNumber: string,
-  text: string,
-  messageId: string,
-  whatsappTimestamp: number,
-): void {
+export function storeIncomingMessage(message: IncomingMessage): void {
   const now = Date.now();
+  const quotedContextJson = message.quotedContext
+    ? JSON.stringify(message.quotedContext)
+    : null;
 
   db.prepare(
-    `INSERT INTO message_inbox (phone_number, message_text, message_id, whatsapp_timestamp, created_at)
-     VALUES (?, ?, ?, ?, ?)`,
-  ).run(phoneNumber, text, messageId, whatsappTimestamp, now);
+    `INSERT INTO message_inbox (phone_number, message_text, message_id, whatsapp_timestamp, created_at, quoted_message_context)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(
+    message.from,
+    message.body,
+    message.id,
+    message.timestamp,
+    now,
+    quotedContextJson,
+  );
 }
 
 export function getReadyForAggregation(
@@ -48,7 +55,8 @@ export function getReadyForAggregation(
        GROUP_CONCAT(id) as ids,
        GROUP_CONCAT(message_text, ' ') as aggregated_text,
        MIN(whatsapp_timestamp) as oldest_timestamp,
-       MAX(message_id) as latest_message_id
+       MAX(message_id) as latest_message_id,
+       MAX(quoted_message_context) as quoted_message_context
      FROM message_inbox
      WHERE status = 'pending'
        AND created_at < ?

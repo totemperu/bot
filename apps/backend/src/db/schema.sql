@@ -94,6 +94,8 @@ CREATE TABLE IF NOT EXISTS messages (
     direction TEXT NOT NULL CHECK(direction IN ('inbound', 'outbound')),
     type TEXT NOT NULL CHECK(type IN ('text', 'image')),
     content TEXT,
+    whatsapp_message_id TEXT,
+    product_id TEXT,
     status TEXT DEFAULT 'sent',
     created_at INTEGER NOT NULL DEFAULT (unixepoch('now', 'subsec') * 1000)
 );
@@ -113,6 +115,7 @@ CREATE TABLE IF NOT EXISTS message_inbox (
     message_text TEXT NOT NULL,
     message_id TEXT UNIQUE NOT NULL,
     whatsapp_timestamp INTEGER NOT NULL,
+    quoted_message_context TEXT,
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'processed', 'failed')),
     aggregate_id TEXT,
     attempts INTEGER DEFAULT 0,
@@ -199,6 +202,7 @@ CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
 CREATE INDEX IF NOT EXISTS idx_bundles_period ON catalog_bundles(period_id);
 CREATE INDEX IF NOT EXISTS idx_bundles_filtering ON catalog_bundles(period_id, segment, is_active, stock_status, primary_category, price);
 CREATE INDEX IF NOT EXISTS idx_messages_phone ON messages(phone_number, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_whatsapp_id ON messages(whatsapp_message_id);
 CREATE INDEX IF NOT EXISTS idx_analytics_phone ON analytics_events(phone_number);
 CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events(event_type);
 CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id, created_at DESC);
