@@ -1,3 +1,8 @@
+/**
+ * WhatsApp JID (Jabber ID) formatting utilities.
+ * These are specific to whatspp-web.js format conversions.
+ */
+
 export function extractPhoneNumber(jid: string): string {
   return jid
     .replace("@c.us", "")
