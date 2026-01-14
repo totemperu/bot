@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 trim() {
 	local var="$1"
 	var="${var#"${var%%[![:space:]]*}"}"
@@ -19,10 +17,10 @@ prompt_required() {
 	read -p "$name: " value
 	value=$(trim "$value")
 
-	if ! is_valid "$value"; then
+	is_valid "$value" || {
 		echo "Error: $name is required" >&2
 		exit 1
-	fi
+	}
 
 	echo "$value"
 }
@@ -35,10 +33,10 @@ prompt_secret() {
 	echo >&2
 	value=$(trim "$value")
 
-	if ! is_valid "$value"; then
+	is_valid "$value" || {
 		echo "Error: $name is required" >&2
 		exit 1
-	fi
+	}
 
 	echo "$value"
 }
@@ -50,7 +48,5 @@ prompt_optional() {
 	read -p "$name (optional): " value
 	value=$(trim "$value")
 
-	if is_valid "$value"; then
-		echo "$value"
-	fi
+	is_valid "$value" && echo "$value"
 }
