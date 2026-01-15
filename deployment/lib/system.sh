@@ -47,7 +47,7 @@ setup_system_deployment() {
 copy_env_to_system() {
 	local source_root="$1"
 	local provided_env="$2"
-	local target="$SYSTEM_ETC/.env.production"
+	local target="$SYSTEM_HOME/.env.production"
 
 	[ -f "$target" ] && return 0
 
