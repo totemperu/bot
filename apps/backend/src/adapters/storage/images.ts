@@ -37,7 +37,7 @@ export const LocalImageStorage: ImageStorage = {
   },
 
   getUrl(imageId: string): string {
-    return `/static/images/${imageId}.jpg`;
+    return `/images/${imageId}.jpg`;
   },
 
   async delete(imageId: string): Promise<void> {
