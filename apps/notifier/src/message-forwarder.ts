@@ -63,7 +63,7 @@ export async function forwardToBackend(msg: Message): Promise<void> {
   };
 
   try {
-    const response = await fetch(`${BACKEND_URL}/webhook`, {
+    const response = await fetch(`${BACKEND_URL}/api/webhook`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
