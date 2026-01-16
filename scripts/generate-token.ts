@@ -32,7 +32,7 @@ function main() {
   } else {
     // Custom length
     length = parseInt(arg, 10);
-    if (isNaN(length) || length < 16) {
+    if (Number.isNaN(length) || length < 16) {
       console.error("Error: Length must be a number >= 16");
       console.log("\nUsage:");
       console.log(
