@@ -526,6 +526,7 @@ function handleEnrichmentResult(
         phase: "offering_products",
         lastQuestion: "¿Alguno de nuestros productos te interesa?",
         expectedOptions: phase.categoryDisplayNames || [],
+        availableCategories: phase.categoryDisplayNames || [],
       },
     },
     pendingPhase: phase,

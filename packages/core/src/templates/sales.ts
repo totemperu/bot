@@ -13,7 +13,7 @@ export const FNB_APPROVED = (
     ],
     [
       `${name}, ¡buenas noticias! 😊 Tu crédito aprobado es de S/ ${credit.toFixed(2)}.`,
-      `Tengo ${groupList}. ¿Cuál te interesa?`,
+      `Tengo productos de ${groupList}. ¿Alguno te interesa? 🤔`,
     ],
     [
       `Perfecto ${name} 🎉 Calificas con S/ ${credit.toFixed(2)} de línea.`,

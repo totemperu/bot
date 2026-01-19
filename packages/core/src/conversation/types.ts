@@ -122,6 +122,7 @@ export type EnrichmentRequest =
         phase: string;
         lastQuestion?: string;
         expectedOptions?: string[];
+        availableCategories?: string[];
       };
     };
 

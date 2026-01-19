@@ -140,6 +140,7 @@ export async function safeRecoverUnclearResponse(
     phase: string;
     lastQuestion?: string;
     expectedOptions?: string[];
+    availableCategories?: string[];
   },
   phoneNumber: string,
 ): Promise<string> {
