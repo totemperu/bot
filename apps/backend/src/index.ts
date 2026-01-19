@@ -36,6 +36,7 @@ import admin from "./routes/admin.ts";
 import catalog from "./routes/catalog.ts";
 import periods from "./routes/periods.ts";
 import orders from "./routes/orders.ts";
+import systemLogs from "./routes/system-logs.ts";
 
 import { getAllStatus } from "./adapters/providers/health.ts";
 import { ReportService } from "./domains/reports/index.ts";
@@ -174,6 +175,10 @@ app.route("/api/orders", orders);
 const requireAnalyticsAccess = requireRole("admin", "developer", "supervisor");
 app.use("/api/analytics/*", requireAnalyticsAccess);
 app.route("/api/analytics", analytics);
+
+// System logs routes
+app.use("/api/system/logs/*", requireAnalyticsAccess);
+app.route("/api/system/logs", systemLogs);
 
 // Admin-only routes
 app.use("/api/admin/*", requireRole("admin"));
