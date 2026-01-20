@@ -1,30 +1,15 @@
-import type { EnrichmentRequest, EnrichmentResult } from "@totem/core";
 import type {
   EnrichmentHandler,
   EnrichmentContext,
 } from "../handler-interface.ts";
-import { checkEligibilityWithFallback } from "../../../domains/eligibility/orchestrator.ts";
-import { BundleService } from "../../../domains/catalog/index.ts";
-import { getCategoryDisplayNames } from "../../../adapters/catalog/display.ts";
-import {
-  CATEGORIES,
-  CATEGORY_GROUPS,
-  type CategoryGroup,
-  type CategoryKey,
-} from "@totem/types";
+import type { EnrichmentRequest, EnrichmentResult } from "@totem/core";
+import { CheckEligibilityHandler } from "../../../domains/eligibility/handlers/check-eligibility-handler.ts";
+import { isOk } from "../../../shared/result/index.ts";
 import { createLogger } from "../../../lib/logger.ts";
 
-const logger = createLogger("enrichment");
+const logger = createLogger("eligibility-enrichment");
 
-/**
- * Checks customer credit eligibility via provider health services.
- *
- * Classifies the customer as FNB or GASO based on NSE presence, derives
- * affordable product categories from credit limits, and handles provider failures.
- *
- * Triggered during onboarding when the state machine requests DNI verification.
- */
-export class CheckEligibilityHandler
+export class CheckEligibilityEnrichmentHandler
   implements
     EnrichmentHandler<
       Extract<EnrichmentRequest, { type: "check_eligibility" }>,
@@ -37,88 +22,27 @@ export class CheckEligibilityHandler
     request: Extract<EnrichmentRequest, { type: "check_eligibility" }>,
     context: EnrichmentContext,
   ): Promise<Extract<EnrichmentResult, { type: "eligibility_result" }>> {
+    const handler = new CheckEligibilityHandler();
+
     try {
-      const result = await checkEligibilityWithFallback(
-        request.dni,
-        context.phoneNumber,
+      const result = await handler.execute(request.dni, context.phoneNumber);
+
+      if (isOk(result)) {
+        return result.value as Extract<
+          EnrichmentResult,
+          { type: "eligibility_result" }
+        >;
+      }
+
+      logger.error(
+        { dni: request.dni },
+        "Unexpected error result from handler",
       );
-
-      if (result.needsHuman) {
-        return {
-          type: "eligibility_result",
-          status: "needs_human",
-          handoffReason: result.handoffReason,
-        };
-      }
-
-      if (result.eligible) {
-        const segment = result.nse !== undefined ? "gaso" : "fnb";
-        const credit = result.credit || 0;
-
-        const affordableCategories = BundleService.getAffordableCategories(
-          segment as "fnb" | "gaso",
-          credit,
-        );
-
-        const categoryDisplayNames =
-          getCategoryDisplayNames(affordableCategories);
-
-        const groups = new Set<CategoryGroup>();
-        for (const categoryKey of affordableCategories) {
-          const category = CATEGORIES[categoryKey as CategoryKey];
-          if (category?.group) {
-            groups.add(category.group);
-          }
-        }
-
-        const groupDisplayNames = Array.from(groups)
-          .map((groupKey) => CATEGORY_GROUPS[groupKey]?.display)
-          .filter(Boolean)
-          .sort((a, b) => {
-            const order: Record<string, number> = {
-              "línea blanca y hogar": 0,
-              tecnología: 1,
-              combos: 2,
-            };
-            const aKey = a.toLowerCase();
-            const bKey = b.toLowerCase();
-            return (order[aKey] ?? 99) - (order[bKey] ?? 99);
-          });
-
-        logger.info(
-          {
-            dni: request.dni,
-            phoneNumber: context.phoneNumber,
-            segment,
-            credit,
-            name: result.name,
-          },
-          "Customer eligible",
-        );
-
-        const affordableBundles = BundleService.getAvailable({
-          segment: segment as "fnb" | "gaso",
-          maxPrice: credit,
-        });
-
-        return {
-          type: "eligibility_result",
-          status: "eligible",
-          segment: segment as "fnb" | "gaso",
-          credit,
-          name: result.name,
-          nse: result.nse,
-          requiresAge: segment === "gaso",
-          affordableCategories,
-          categoryDisplayNames,
-          groupDisplayNames,
-          affordableBundles,
-        };
-      }
 
       return {
         type: "eligibility_result",
-        status: "not_eligible",
+        status: "needs_human",
+        handoffReason: "eligibility_check_error",
       };
     } catch (error) {
       logger.error(
@@ -126,9 +50,8 @@ export class CheckEligibilityHandler
           error,
           dni: request.dni,
           phoneNumber: context.phoneNumber,
-          enrichmentType: "check_eligibility",
         },
-        "Eligibility check failed",
+        "Eligibility check failed with exception",
       );
 
       return {
