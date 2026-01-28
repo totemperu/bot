@@ -102,7 +102,7 @@ function parseProducts(productsJson: string) {
 
   <div class="min-h-screen bg-cream-100">
     <!-- Header -->
-    <div class="bg-white border-b border-ink-900/10 sticky top-16.25 z-10">
+    <div class="bg-white border-b border-ink-900/10 sticky z-10">
       <div class="max-w-7xl mx-auto px-8 py-6">
         <button onclick={goBack} class="text-xs text-ink-400 hover:text-ink-600 mb-2 flex items-center gap-1">
           <span>&larr;</span> Volver a órdenes

@@ -284,7 +284,7 @@ function goBack() {
     {/if}
 
     <!-- Header -->
-    <div class="bg-white border-b border-ink-900/10 sticky top-16.25 z-10">
+    <div class="bg-white border-b border-ink-900/10 sticky z-10">
       <div class="max-w-7xl mx-auto px-8 py-6">
         <div class="flex justify-between items-start mb-6">
           <div>
